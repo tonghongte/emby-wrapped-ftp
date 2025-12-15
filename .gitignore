@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# Music files (copyrighted)
+static/music/
+*.mp3
+
 # Build output
 build/
 .svelte-kit/
