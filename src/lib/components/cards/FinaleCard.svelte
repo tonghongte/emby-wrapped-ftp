@@ -142,7 +142,7 @@
 			<div class="stat-item">
 				<span class="stat-value font-mono">
 					<AnimatedNumber
-						value={stats.topGenres.length}
+						value={stats.totalGenresExplored}
 						duration={1000}
 					/>
 				</span>

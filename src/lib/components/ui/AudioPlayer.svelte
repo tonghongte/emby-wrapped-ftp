@@ -139,7 +139,7 @@
 	}
 </script>
 
-{#if showPrompt && !hasInteracted}
+{#if musicTracks.length > 0 && showPrompt && !hasInteracted}
 	<div class="audio-prompt">
 		<div class="prompt-content">
 			<span class="icon">{UNICODE.music}</span>
@@ -148,68 +148,75 @@
 	</div>
 {/if}
 
-<div class="audio-controls" class:visible={hasInteracted}>
-	<button
-		class="control-btn"
-		on:click={toggleMute}
-		aria-label={isMuted ? "Unmute" : "Mute"}
-	>
-		{#if isMuted}
-			<!-- Speaker X (Muted) -->
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="20"
-				height="20"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-			>
-				<path d="M11 5L6 9H2v6h4l5 4V5z" />
-				<line x1="23" y1="9" x2="17" y2="15" />
-				<line x1="17" y1="9" x2="23" y2="15" />
-			</svg>
-		{:else}
-			<!-- Speaker Wave (Volume) -->
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="20"
-				height="20"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-			>
-				<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-				<path
-					d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"
-				></path>
-			</svg>
-		{/if}
-	</button>
-
-	<button class="control-btn" on:click={nextTrack} aria-label="Skip Track">
-		<!-- Skip Forward Icon -->
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			width="20"
-			height="20"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="2"
-			stroke-linecap="round"
-			stroke-linejoin="round"
+{#if musicTracks.length > 0}
+	<div class="audio-controls" class:visible={hasInteracted}>
+		<button
+			class="control-btn"
+			on:click={toggleMute}
+			aria-label={isMuted ? "Unmute" : "Mute"}
 		>
-			<polygon points="5 4 15 12 5 20 5 4"></polygon>
-			<line x1="19" y1="5" x2="19" y2="19"></line>
-		</svg>
-	</button>
-</div>
+			{#if isMuted}
+				<!-- Speaker X (Muted) -->
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="20"
+					height="20"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M11 5L6 9H2v6h4l5 4V5z" />
+					<line x1="23" y1="9" x2="17" y2="15" />
+					<line x1="17" y1="9" x2="23" y2="15" />
+				</svg>
+			{:else}
+				<!-- Speaker Wave (Volume) -->
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="20"
+					height="20"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"
+					></polygon>
+					<path
+						d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"
+					></path>
+				</svg>
+			{/if}
+		</button>
+
+		<button
+			class="control-btn"
+			on:click={nextTrack}
+			aria-label="Skip Track"
+		>
+			<!-- Skip Forward Icon -->
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				width="20"
+				height="20"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+			>
+				<polygon points="5 4 15 12 5 20 5 4"></polygon>
+				<line x1="19" y1="5" x2="19" y2="19"></line>
+			</svg>
+		</button>
+	</div>
+{/if}
 
 <style>
 	.audio-controls {
@@ -228,6 +235,20 @@
 		color: white;
 		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 		transition: all 0.2s ease;
+	}
+
+	/* More subtle on mobile */
+	@media (max-width: 768px) {
+		.audio-controls {
+			opacity: 0.6;
+			background: rgba(20, 20, 20, 0.7);
+			padding: 0.5rem 1rem;
+		}
+
+		.audio-controls:hover,
+		.audio-controls:active {
+			opacity: 1;
+		}
 	}
 
 	.control-btn {

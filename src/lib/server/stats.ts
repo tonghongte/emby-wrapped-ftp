@@ -60,6 +60,7 @@ export interface UserStats {
     topMovies: TopItem[];
     topShows: TopItem[];
     topGenres: GenreStat[];
+    totalGenresExplored: number;  // Total count before slicing to top 8
 
     // Temporal patterns
     heatmap: HeatmapData;
@@ -236,7 +237,8 @@ export async function aggregateUserStats(userId: string, username: string, year:
             };
         });
 
-    // Build genre stats - show AT LEAST 5 genres
+    // Build genre stats - show AT LEAST 5 genres (topGenres is for display, totalGenresExplored is for stats)
+    const totalGenresExplored = genreMinutes.size;
     const totalGenreMinutes = [...genreMinutes.values()].reduce((a, b) => a + b, 0) || 1;
     const topGenres: GenreStat[] = [...genreMinutes.entries()]
         .sort((a, b) => b[1] - a[1])
@@ -408,6 +410,7 @@ export async function aggregateUserStats(userId: string, username: string, year:
         topMovies,
         topShows,
         topGenres,
+        totalGenresExplored,
         heatmap: {
             hours: hours.map(h => Math.round(h)),
             days: days.map(d => Math.round(d)),

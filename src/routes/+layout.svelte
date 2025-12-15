@@ -1,6 +1,8 @@
 <script lang="ts">
 	import "../app.css";
 	import AudioPlayer from "$lib/components/ui/AudioPlayer.svelte";
+
+	export let data;
 </script>
 
 <svelte:head>
@@ -16,6 +18,9 @@
 	/>
 	<meta property="og:type" content="website" />
 	<meta name="twitter:card" content="summary_large_image" />
+	{#if data.analyticsScript}
+		{@html data.analyticsScript}
+	{/if}
 </svelte:head>
 
 <div class="app">

@@ -133,6 +133,7 @@ npm run preview
 | `EMBY_API_KEY` | API key from Emby Dashboard | Yes |
 | `TMDB_API_KEY` | TMDB API key for enhanced poster images (get one free at themoviedb.org) | No |
 | `PUBLIC_URL` | Public URL for share links (defaults to request origin) | No |
+| `ANALYTICS_SCRIPT` | Analytics script tag (e.g., Umami, Plausible) to inject into page head | No |
 
 ## Background Music
 
