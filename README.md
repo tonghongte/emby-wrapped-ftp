@@ -1,0 +1,175 @@
+# Emby Wrapped
+
+A beautiful, Spotify Wrapped-style year-in-review experience for your Emby media server. See your viewing stats, top shows, favorite genres, and more in an interactive, animated presentation.
+
+![Emby Wrapped](https://img.shields.io/badge/Emby-Wrapped-1db954?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
+![SvelteKit](https://img.shields.io/badge/SvelteKit-FF3E00?style=for-the-badge&logo=svelte&logoColor=white)
+
+## Features
+
+- 📊 **Total Watch Time** - See how many days/hours you've spent watching
+- 🎬 **Top Shows & Movies** - Your most-watched content with beautiful poster displays
+- 🎭 **Genre Breakdown** - Discover your viewing preferences
+- ⏰ **Viewing Patterns** - Peak hours and favorite days of the week
+- 🎯 **Viewing Personality** - Fun personality type based on your habits
+- 🔥 **Binge Sessions** - See your longest viewing marathons
+- 📅 **Monthly Journey** - Track your viewing across the year
+- 📸 **Share Cards** - Download individual stat cards to share
+
+## Requirements
+
+### Emby Server Setup
+
+1. **Emby Server** - Version 4.7+ recommended
+2. **Playback Reporting Plugin** (Required)
+   - Go to Emby Dashboard → Plugins → Catalog
+   - Search for "Playback Reporting"
+   - Install and restart Emby server
+   - This plugin tracks detailed playback history needed for stats
+
+3. **API Key**
+   - Go to Emby Dashboard → API Keys
+   - Create a new API key for "Emby Wrapped"
+   - Copy the key for configuration
+
+## Quick Start with Docker (Recommended)
+
+### Using Docker Compose
+
+1. Create a `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+services:
+  emby-wrapped:
+    image: ghcr.io/davidtorcivia/emby-wrapped:latest
+    container_name: emby-wrapped
+    ports:
+      - "3000:3000"
+    environment:
+      - EMBY_SERVER_URL=http://your-emby-server:8096
+      - EMBY_API_KEY=your-api-key-here
+    restart: unless-stopped
+```
+
+2. Run:
+```bash
+docker-compose up -d
+```
+
+3. Access at `http://localhost:3000`
+
+### Using Docker Run
+
+```bash
+docker run -d \
+  --name emby-wrapped \
+  -p 3000:3000 \
+  -e EMBY_SERVER_URL=http://your-emby-server:8096 \
+  -e EMBY_API_KEY=your-api-key-here \
+  ghcr.io/davidtorcivia/emby-wrapped:latest
+```
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 18+
+- npm or pnpm
+
+### Setup
+
+1. Clone the repository:
+```bash
+git clone https://github.com/davidtorcivia/emby-wrapped.git
+cd emby-wrapped
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Create environment file:
+```bash
+cp .env.example .env
+```
+
+4. Edit `.env` with your Emby server details:
+```env
+EMBY_SERVER_URL=http://your-emby-server:8096
+EMBY_API_KEY=your-api-key-here
+```
+
+5. Start development server:
+```bash
+npm run dev
+```
+
+6. Open `http://localhost:5173` in your browser
+
+### Building for Production
+
+```bash
+npm run build
+npm run preview
+```
+
+## Configuration
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `EMBY_SERVER_URL` | Full URL to your Emby server (e.g., `http://192.168.1.100:8096`) | Yes |
+| `EMBY_API_KEY` | API key from Emby Dashboard | Yes |
+
+## Usage
+
+1. Navigate to the app in your browser
+2. Select your user from the list
+3. Enjoy your personalized Emby Wrapped experience!
+4. Use the Share button on any card to download it as an image
+
+## Tech Stack
+
+- **Framework**: SvelteKit
+- **Styling**: Tailwind CSS
+- **Animations**: CSS animations + Svelte transitions
+- **Image Capture**: html2canvas
+- **Fonts**: Space Grotesk, JetBrains Mono
+
+## Security Considerations
+
+- API keys are stored server-side only and never exposed to the client
+- All Emby API requests are proxied through the server
+- No user data is stored - stats are fetched fresh each time
+- CORS is handled server-side
+
+## Troubleshooting
+
+### "No users found"
+- Verify your `EMBY_SERVER_URL` is correct and accessible
+- Check that your `EMBY_API_KEY` has sufficient permissions
+
+### Stats seem incomplete
+- Make sure the **Playback Reporting** plugin is installed
+- The plugin needs time to collect data - it only tracks plays after installation
+- Check the date range - Emby Wrapped shows current year stats
+
+### Images not loading
+- Ensure your Emby server is accessible from the Emby Wrapped container/server
+- Check for any firewall rules blocking the connection
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Inspired by Spotify Wrapped
+- Built for the Emby community
+- Uses the Emby API for data retrieval

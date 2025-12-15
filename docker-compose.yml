@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  emby-wrapped:
+    build: .
+    container_name: emby-wrapped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - EMBY_SERVER_URL=${EMBY_SERVER_URL}
+      - EMBY_API_KEY=${EMBY_API_KEY}
+    restart: unless-stopped
+    # Security: Read-only root filesystem
+    read_only: true
+    # Security: Drop all capabilities
+    cap_drop:
+      - ALL
+    # Security: No new privileges
+    security_opt:
+      - no-new-privileges:true
+    # Tmpfs for writable directories needed by Node
+    tmpfs:
+      - /tmp:noexec,nosuid,nodev
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
