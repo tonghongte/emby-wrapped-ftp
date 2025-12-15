@@ -10,6 +10,11 @@ services:
       - NODE_ENV=production
       - EMBY_SERVER_URL=${EMBY_SERVER_URL}
       - EMBY_API_KEY=${EMBY_API_KEY}
+      - TMDB_API_KEY=${TMDB_API_KEY:-}
+      - PUBLIC_URL=${PUBLIC_URL:-}
+    volumes:
+      # Mount custom music files (optional)
+      - ./music:/app/static/music:ro
     restart: unless-stopped
     # Security: Read-only root filesystem
     read_only: true

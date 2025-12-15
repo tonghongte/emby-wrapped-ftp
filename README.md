@@ -8,14 +8,14 @@ A beautiful, Spotify Wrapped-style year-in-review experience for your Emby media
 
 ## Features
 
-- 📊 **Total Watch Time** - See how many days/hours you've spent watching
-- 🎬 **Top Shows & Movies** - Your most-watched content with beautiful poster displays
-- 🎭 **Genre Breakdown** - Discover your viewing preferences
-- ⏰ **Viewing Patterns** - Peak hours and favorite days of the week
-- 🎯 **Viewing Personality** - Fun personality type based on your habits
-- 🔥 **Binge Sessions** - See your longest viewing marathons
-- 📅 **Monthly Journey** - Track your viewing across the year
-- 📸 **Share Cards** - Download individual stat cards to share
+- **Total Watch Time** - See how many days/hours you've spent watching
+- **Top Shows and Movies** - Your most-watched content with beautiful poster displays
+- **Genre Breakdown** - Discover your viewing preferences
+- **Viewing Patterns** - Peak hours and favorite days of the week
+- **Viewing Personality** - Fun personality type based on your habits
+- **Binge Sessions** - See your longest viewing marathons
+- **Monthly Journey** - Track your viewing across the year
+- **Share Cards** - Download individual stat cards to share
 
 ## Requirements
 
@@ -122,6 +122,18 @@ npm run preview
 |----------|-------------|----------|
 | `EMBY_SERVER_URL` | Full URL to your Emby server (e.g., `http://192.168.1.100:8096`) | Yes |
 | `EMBY_API_KEY` | API key from Emby Dashboard | Yes |
+| `TMDB_API_KEY` | TMDB API key for enhanced poster images (get one free at themoviedb.org) | No |
+| `PUBLIC_URL` | Public URL for share links (defaults to request origin) | No |
+
+## Background Music
+
+Emby Wrapped supports custom background music during the presentation. To add your own tracks:
+
+1. Create a `static/music/` directory in the project
+2. Add MP3 files to the directory
+3. Music will automatically play during the wrapped experience
+
+For Docker deployments, mount a volume to `/app/static/music/` (see docker-compose example).
 
 ## Usage
 

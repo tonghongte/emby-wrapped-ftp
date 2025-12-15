@@ -46,12 +46,61 @@
 	$: secondaryGenre = genres[1]?.name || null;
 
 	function getPersonality(): string {
-		if (genres.length < 2) return `A true ${primaryGenre} devotee`;
-		if (genres[0].percentage > 50)
-			return `A devoted ${primaryGenre} enthusiast`;
-		if (genres[0].percentage > 35)
-			return `${primaryGenre} at heart, with ${secondaryGenre} tendencies`;
-		return `An eclectic explorer across genres`;
+		const numGenres = genres.length;
+		const topPercent = genres[0]?.percentage || 0;
+		const top = primaryGenre;
+		const second = secondaryGenre;
+
+		// Genre-specific titles
+		const genreTitles: Record<string, string> = {
+			Comedy: "The Laugh Seeker",
+			Drama: "The Emotional Voyager",
+			Action: "The Adrenaline Junkie",
+			Thriller: "The Edge Dweller",
+			Horror: "The Fear Connoisseur",
+			"Sci-Fi": "The Frontier Explorer",
+			Fantasy: "The Dream Weaver",
+			Documentary: "The Truth Seeker",
+			Romance: "The Heart Follower",
+			Animation: "The Artful Eye",
+			Crime: "The Case Cracker",
+			Mystery: "The Puzzle Master",
+			Adventure: "The Thrill Chaser",
+			Family: "The Heartwarmer",
+			War: "The History Witness",
+			Western: "The Frontier Spirit",
+			Musical: "The Melody Lover",
+			"Science Fiction": "The Frontier Explorer",
+		};
+
+		const title = genreTitles[top] || `The ${top} Fan`;
+
+		// Tagline based on viewing distribution
+		if (topPercent > 60) {
+			return `${title} - unshakably devoted`;
+		}
+		if (topPercent > 45) {
+			return `${title} - with clear conviction`;
+		}
+		if (topPercent > 30) {
+			if (second) {
+				return `${title} - with a ${second} streak`;
+			}
+			return `${title} - leading the pack`;
+		}
+		if (topPercent > 20) {
+			if (numGenres >= 5) {
+				return `${title} - among many passions`;
+			}
+			return `${title} - first among equals`;
+		}
+
+		// Very balanced viewing - still use top genre but acknowledge breadth
+		if (numGenres >= 6) {
+			return `${title} - curator of all genres`;
+		}
+
+		return `${title} - with eclectic taste`;
 	}
 
 	function getGenreColor(index: number): string {
