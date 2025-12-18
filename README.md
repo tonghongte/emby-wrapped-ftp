@@ -60,7 +60,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - EMBY_SERVER_URL=http://your-emby-server:8096
+      - EMBY_URL=http://your-emby-server:8096
       - EMBY_API_KEY=your-api-key-here
       - TMDB_API_KEY=  # Optional: for enhanced poster images
       - PUBLIC_URL=    # Optional: for share links
@@ -91,7 +91,7 @@ cp .env.example .env
 
 3. Edit `.env` with your Emby server details:
 ```env
-EMBY_SERVER_URL=http://your-emby-server:8096
+EMBY_URL=http://your-emby-server:8096
 EMBY_API_KEY=your-api-key-here
 # Optional
 TMDB_API_KEY=
@@ -144,7 +144,7 @@ cp .env.example .env
 
 4. Edit `.env` with your Emby server details:
 ```env
-EMBY_SERVER_URL=http://your-emby-server:8096
+EMBY_URL=http://your-emby-server:8096
 EMBY_API_KEY=your-api-key-here
 ```
 
@@ -166,7 +166,7 @@ npm run preview
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `EMBY_SERVER_URL` | Full URL to your Emby server (e.g., `http://192.168.1.100:8096`) | Yes |
+| `EMBY_URL` | Full URL to your Emby server (e.g., `http://192.168.1.100:8096`) | Yes |
 | `EMBY_API_KEY` | API key from Emby Dashboard | Yes |
 | `TMDB_API_KEY` | TMDB API key for enhanced poster images (get one free at themoviedb.org) | No |
 | `PUBLIC_URL` | Public URL for share links (defaults to request origin) | No |
@@ -207,7 +207,7 @@ For Docker deployments, mount a volume to `/app/static/music/` (see docker-compo
 ## Troubleshooting
 
 ### "No users found"
-- Verify your `EMBY_SERVER_URL` is correct and accessible
+- Verify your `EMBY_URL` is correct and accessible
 - Check that your `EMBY_API_KEY` has sufficient permissions
 
 ### Stats seem incomplete

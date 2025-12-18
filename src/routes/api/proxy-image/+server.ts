@@ -26,8 +26,9 @@ function isAllowedUrl(urlString: string): boolean {
         }
 
         // Check if it's the configured Emby server
-        if (env.EMBY_URL) {
-            const embyHost = new URL(env.EMBY_URL).hostname.toLowerCase();
+        const embyUrl = env.EMBY_URL || env.EMBY_SERVER_URL;
+        if (embyUrl) {
+            const embyHost = new URL(embyUrl).hostname.toLowerCase();
             if (hostname === embyHost) {
                 return true;
             }

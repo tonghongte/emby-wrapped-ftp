@@ -58,7 +58,14 @@ export interface EmbyItem {
 
 class EmbyClient {
     private get baseUrl(): string {
-        return (env.EMBY_URL || 'http://192.168.1.131:8096').replace(/\/$/, '');
+        const configured =
+            env.EMBY_URL || env.EMBY_SERVER_URL; // EMBY_SERVER_URL kept for backwards compatibility
+
+        if (!configured) {
+            throw new Error('Missing required environment variable: EMBY_URL (or legacy EMBY_SERVER_URL)');
+        }
+
+        return configured.replace(/\/$/, '');
     }
 
     private get apiKey(): string {
