@@ -45,47 +45,39 @@ A beautiful, Spotify Wrapped-style year-in-review experience for your Emby media
 
 ### Using Docker Compose
 
-1. Create a `docker-compose.yml`:
-
-```yaml
-version: '3.8'
-services:
-  emby-wrapped:
-    image: ghcr.io/davidtorcivia/emby-wrapped:latest
-    container_name: emby-wrapped
-    ports:
-      - "3000:3000"
-    environment:
-      - EMBY_SERVER_URL=http://your-emby-server:8096
-      - EMBY_API_KEY=your-api-key-here
-      # Optional: TMDB API key for enhanced poster images
-      - TMDB_API_KEY=
-      # Optional: Public URL for share links
-      - PUBLIC_URL=
-    volumes:
-      # Optional: Mount custom background music
-      - ./music:/app/static/music:ro
-    restart: unless-stopped
+1. Clone the repository:
+```bash
+git clone https://github.com/davidtorcivia/emby-wrapped.git
+cd emby-wrapped
 ```
 
-2. Run:
+2. Create your environment file:
 ```bash
-docker-compose up -d
+cp .env.example .env
 ```
 
-3. Access at `http://localhost:3000`
+3. Edit `.env` with your Emby server details:
+```env
+EMBY_SERVER_URL=http://your-emby-server:8096
+EMBY_API_KEY=your-api-key-here
+# Optional
+TMDB_API_KEY=
+PUBLIC_URL=
+```
 
-### Using Docker Run
-
+4. Build and run:
 ```bash
-docker run -d \
-  --name emby-wrapped \
-  -p 3000:3000 \
-  -e EMBY_SERVER_URL=http://your-emby-server:8096 \
-  -e EMBY_API_KEY=your-api-key-here \
-  -e TMDB_API_KEY=your-tmdb-key \
-  -v ./music:/app/static/music:ro \
-  ghcr.io/davidtorcivia/emby-wrapped:latest
+docker-compose up -d --build
+```
+
+5. Access at `http://localhost:3000`
+
+### Rebuilding After Updates
+
+To pull the latest changes and rebuild:
+```bash
+git pull
+docker-compose up -d --build
 ```
 
 ## Local Development
