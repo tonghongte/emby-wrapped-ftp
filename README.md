@@ -6,6 +6,14 @@ A beautiful, Spotify Wrapped-style year-in-review experience for your Emby media
 ![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 ![SvelteKit](https://img.shields.io/badge/SvelteKit-FF3E00?style=for-the-badge&logo=svelte&logoColor=white)
 
+## Screenshots
+
+<p align="center">
+  <img src="https://images.disinfo.zone/uploads/cUxT3h3VqZUrNWHnFaJl2S7MVNkFDZA11ZndwHET.jpg" width="250" alt="Top Shows" />
+  <img src="https://images.disinfo.zone/uploads/SNPzSbEtNqFrd4CmQSBvbtUhe9QFP4Hjuz8kYD8s.jpg" width="250" alt="Viewing Stats" />
+  <img src="https://images.disinfo.zone/uploads/FI4PJKqYrcASPtrKS64KO4QC87jcu47KjT4BkFK6.jpg" width="250" alt="Genre Breakdown" />
+</p>
+
 ## Features
 
 - **Total Watch Time** - See how many days/hours you've spent watching
