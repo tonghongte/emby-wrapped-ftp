@@ -451,4 +451,55 @@
 		color: rgba(255, 255, 255, 0.2);
 		font-size: 1.25rem;
 	}
+
+	/* Mobile Compression */
+	@media (max-width: 480px) {
+		.card-base {
+			padding: 1.25rem;
+		}
+
+		.card-content {
+			gap: 1rem;
+		}
+
+		.label {
+			font-size: 0.75rem;
+		}
+
+		.label-section {
+			gap: 0.5rem;
+		}
+
+		.poster-frame {
+			width: 160px;
+			max-width: 45vw;
+			border-radius: 12px;
+		}
+
+		.poster-glow {
+			inset: -25px;
+		}
+
+		.title {
+			font-size: clamp(1.25rem, 6vw, 1.75rem);
+		}
+
+		.stats-section {
+			gap: 0.75rem;
+			padding: 0.75rem 1rem;
+			border-radius: 10px;
+		}
+
+		.stat-value {
+			font-size: 1.125rem;
+		}
+
+		.stat-label {
+			font-size: 0.5625rem;
+		}
+
+		.stat-divider {
+			font-size: 1rem;
+		}
+	}
 </style>
