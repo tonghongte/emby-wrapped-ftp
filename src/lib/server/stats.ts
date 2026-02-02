@@ -177,7 +177,7 @@ function parseDateTime(date: string, time: string): Date {
 /**
  * Check if a date matches the given time range
  */
-function matchesTimeRange(dateStr: string, range: TimeRange): boolean {
+export function matchesTimeRange(dateStr: string, range: TimeRange): boolean {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return false;
 
@@ -217,7 +217,7 @@ export function getAvailableTimeRanges(): { value: string; label: string }[] {
 /**
  * Calculate how many days back we need to fetch to cover the requested time range
  */
-function calculateLookbackDays(range: TimeRange): number {
+export function calculateLookbackDays(range: TimeRange): number {
     const now = new Date();
     const targetStart = new Date(range.year, 0, 1); // Jan 1st of the requested year
     
