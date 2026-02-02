@@ -42,7 +42,9 @@ jobs:
         continue-on-error: true
 
       - name: Build and start container
-        run: docker compose up -d --build
+        run: |
+          docker compose build --no-cache
+          docker compose up -d --force-recreate
 
       - name: Wait for health check
         run: |
