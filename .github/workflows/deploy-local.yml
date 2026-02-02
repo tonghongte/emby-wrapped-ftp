@@ -32,8 +32,10 @@ jobs:
           "@
           Set-Content -Path .env -Value $envContent -Encoding UTF8
 
-      - name: Stop existing container
-        run: docker compose down
+      - name: Stop existing container and clean up
+        run: |
+          docker compose down
+          docker image rm emby-wrapped:latest -Force -ErrorAction SilentlyContinue
         continue-on-error: true
 
       - name: Build and start container
