@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from "svelte";
+	import { goto } from "$app/navigation";
 	import { UNICODE } from "$lib/utils/format";
 	import type { UserStats } from "$lib/server/stats";
 	import ShareButton from "../ui/ShareButton.svelte";
@@ -7,9 +8,17 @@
 	export let stats: UserStats;
 	export let serverName: string;
 	export let userImageUrl: string | null;
+	export let timeRangeOptions: { value: string; label: string }[] = [];
+	export let currentTimeRange: string = "";
 
 	let visible = false;
 	let phase = 0;
+
+	function handleTimeRangeChange(event: Event) {
+		const select = event.target as HTMLSelectElement;
+		const newPeriod = select.value;
+		goto(`?period=${newPeriod}`, { replaceState: true });
+	}
 
 	onMount(() => {
 		setTimeout(() => {
@@ -53,8 +62,18 @@
 			class:active={phase >= 1}
 			class:minimized={phase >= 3}
 		>
-			<div class="wrapped-year font-display">2025</div>
+			<div class="wrapped-year font-display">{stats.year}</div>
 			<div class="wrapped-label text-gradient">WRAPPED</div>
+
+			<!-- Time Range Selector -->
+			<div class="time-selector-wrapper" on:click|stopPropagation>
+				<select value={currentTimeRange} on:change={handleTimeRangeChange} class="time-select">
+					{#each timeRangeOptions as option}
+						<option value={option.value}>{option.label}</option>
+					{/each}
+				</select>
+				<div class="select-arrow">{UNICODE.triangleDown}</div>
+			</div>
 		</div>
 
 		<!-- Phase 2: Bridge -->
@@ -191,6 +210,58 @@
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
+	}
+
+	/* Time Selector */
+	.time-selector-wrapper {
+		margin-top: 1.5rem;
+		position: relative;
+		display: flex;
+		align-items: center;
+		pointer-events: auto; /* Ensure clickable */
+		z-index: 20;
+	}
+
+	.time-select {
+		appearance: none;
+		-webkit-appearance: none;
+		background: rgba(255, 255, 255, 0.1);
+		border: 1px solid rgba(255, 255, 255, 0.2);
+		border-radius: 100px;
+		color: rgba(255, 255, 255, 0.8);
+		font-family: "JetBrains Mono", monospace;
+		font-size: 0.875rem;
+		padding: 0.5rem 2.5rem 0.5rem 1.25rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		outline: none;
+		text-align: center;
+	}
+
+	.time-select:hover {
+		background: rgba(255, 255, 255, 0.15);
+		border-color: rgba(255, 255, 255, 0.4);
+		color: white;
+	}
+
+	.time-select option {
+		background: #1a1a1a;
+		color: white;
+	}
+
+	.select-arrow {
+		position: absolute;
+		right: 1rem;
+		top: 50%;
+		transform: translateY(-50%);
+		pointer-events: none;
+		font-size: 0.6rem;
+		color: rgba(255, 255, 255, 0.5);
+	}
+
+	/* Hide selector when minimized */
+	.year-lockup.minimized .time-selector-wrapper {
+		display: none;
 	}
 
 	/* Bridge */

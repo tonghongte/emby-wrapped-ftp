@@ -52,7 +52,13 @@
 		cards.push({
 			type: "intro",
 			component: IntroCard,
-			props: { stats, serverName, userImageUrl },
+			props: { 
+				stats, 
+				serverName, 
+				userImageUrl,
+				timeRangeOptions,
+				currentTimeRange
+			},
 		});
 
 		// 2. Total time
@@ -200,14 +206,14 @@
 	/>
 </svelte:head>
 
-<!-- Time Range Selector -->
-<div class="time-range-selector">
+<!-- Time Range Selector - Moved to IntroCard -->
+<!-- <div class="time-range-selector">
 	<select value={currentTimeRange} on:change={handleTimeRangeChange}>
 		{#each timeRangeOptions as option}
 			<option value={option.value}>{option.label}</option>
 		{/each}
 	</select>
-</div>
+</div> -->
 
 <CardStack totalCards={cards.length} let:cardIndex let:isActive>
 	{#if isActive}
