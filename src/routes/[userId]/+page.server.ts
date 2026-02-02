@@ -51,6 +51,105 @@ function setCachedStats(userId: string, timeRange: string, stats: UserStats): vo
     }
 }
 
+/**
+ * Check if an ID looks like a valid Emby UUID (not a slug)
+ */
+function isValidEmbyId(id: string): boolean {
+    return /^[0-9a-f]{32}$/i.test(id);
+}
+
+/**
+ * Enhance images for top items - use TMDB when Emby ID is invalid
+ */
+async function enhanceTopItemImages(items: TopItem[], type: 'show' | 'movie'): Promise<TopItem[]> {
+    const enhanced = await Promise.all(items.map(async (item) => {
+        const hasValidEmbyId = isValidEmbyId(item.id) || (item.seriesId && isValidEmbyId(item.seriesId));
+
+        if (!hasValidEmbyId) {
+            try {
+                const tmdbUrl = await tmdb.findPosterUrl(item.name, type === 'show' ? 'tv' : 'movie');
+                if (tmdbUrl) {
+                    return {
+                        ...item,
+                        imageUrl: tmdbUrl,
+                        tmdbImageUrl: tmdbUrl
+                    };
+                }
+            } catch {
+                // TMDB lookup failed, keep original
+            }
+        } else {
+            try {
+                const tmdbUrl = await tmdb.findPosterUrl(item.name, type === 'show' ? 'tv' : 'movie');
+                if (tmdbUrl) {
+                    return {
+                        ...item,
+                        tmdbImageUrl: tmdbUrl
+                    };
+                }
+            } catch {
+                // Silently fail
+            }
+        }
+        return item;
+    }));
+
+    return enhanced;
+}
+
+export const load: PageServerLoad = async ({ params, url }) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'[userId]/+page.server.ts:126',message:'Page load entry',data:{userId: params.userId, period: url.searchParams.get('period')},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
+    // #endregion
+    const { userId } = params;
+
+    // Get time range from URL parameter, default to previous year
+    const now = new Date();
+    const defaultTimeRange = String(now.getFullYear() - 1);
+    const timeRangeParam = url.searchParams.get('period') || defaultTimeRange;
+    const timeRange = parseTimeRange(timeRangeParam);
+    const timeRangeStr = timeRangeToString(timeRange);
+
+    try {
+        const users = await emby.getUsers();
+        const user = users.find(u => u.Id === userId);
+
+        if (!user) {
+            throw error(404, 'User not found');
+        }
+
+        // Check cache first
+        let stats = getCachedStats(userId, timeRangeStr);
+
+        if (!stats) {
+            // Cache miss - compute stats
+            stats = await aggregateUserStats(userId, user.Name, timeRange);
+
+            // Enhance images with TMDB fallbacks
+            const [enhancedShows, enhancedMovies] = await Promise.all([
+                enhanceTopItemImages(stats.topShows, 'show'),
+                enhanceTopItemImages(stats.topMovies, 'movie')
+            ]);
+
+            stats = {
+                ...stats,
+                topShows: enhancedShows,
+                topMovies: enhancedMovies
+            };
+
+            // Save to cache
+            setCachedStats(userId, timeRangeStr, stats);
+        }
+
+        const rawUserImageUrl = user.PrimaryImageTag
+            ? emby.getUserImageUrl(userId)
+            : null;
+
+        // Proxy the image to avoid Local Network Access browser restrictions
+        const userImageUrl = rawUserImageUrl
+            ? `/api/proxy-image?url=${encodeURIComponent(rawUserImageUrl)}`
+            : null;
+
         // Get available time range options
         const timeRangeOptions = getAvailableTimeRanges();
 
