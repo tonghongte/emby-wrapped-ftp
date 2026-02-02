@@ -13,6 +13,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Verify Commit
+        run: |
+          git log -1 --format="%H - %s (%an)"
+          git status
+
+
       - name: Create .env file from secrets
         run: |
           $envContent = @"
