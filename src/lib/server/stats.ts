@@ -178,13 +178,32 @@ function parseDateTime(date: string, time: string): Date {
  * Check if a date matches the given time range
  */
 function matchesTimeRange(dateStr: string, range: TimeRange): boolean {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return false;
+
     if (range.type === 'year') {
-        return dateStr.indexOf(String(range.year)) === 0;
+        return date.getFullYear() === range.year;
     }
-    // Month: check both year and month
-    const monthStr = range.month! < 10 ? '0' + range.month : String(range.month);
-    const prefix = `${range.year}-${monthStr}`;
-    return dateStr.indexOf(prefix) === 0;
+    // Month: check both year and month (getMonth is 0-indexed)
+    return date.getFullYear() === range.year && (date.getMonth() + 1) === range.month;
+}
+
+/**
+ * Calculate how many days back we need to fetch to cover the requested time range
+ */
+function calculateLookbackDays(range: TimeRange): number {
+    const now = new Date();
+    const targetStart = new Date(range.year, 0, 1); // Jan 1st of the requested year
+    
+    // If target is in the future (shouldn't happen usually), default to 365
+    if (targetStart > now) return 365;
+
+    // Calculate difference in days
+    const diffTime = Math.abs(now.getTime() - targetStart.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // Return days needed + buffer, or at least 365
+    return Math.max(365, diffDays + 14);
 }
 
 /**
@@ -196,8 +215,12 @@ export async function aggregateUserStats(userId: string, username: string, timeR
         ? { type: 'year', year: timeRange }
         : timeRange;
 
+    // Calculate how many days to fetch based on the time range
+    // If requesting a previous year, we need to go back further than 365 days
+    const daysToFetch = calculateLookbackDays(range);
+
     // Fetch user playback activity
-    const allActivity = await emby.getUserPlaybackActivity(userId, 365);
+    const allActivity = await emby.getUserPlaybackActivity(userId, daysToFetch);
 
     // Separate video and audio content
     const videoActivity = allActivity.filter(a => {
@@ -562,8 +585,11 @@ export async function aggregateMusicStats(userId: string, username: string, time
         ? { type: 'year', year: timeRange }
         : timeRange;
 
+    // Calculate how many days to fetch based on the time range
+    const daysToFetch = calculateLookbackDays(range);
+
     // Fetch user playback activity
-    const allActivity = await emby.getUserPlaybackActivity(userId, 365);
+    const allActivity = await emby.getUserPlaybackActivity(userId, daysToFetch);
 
     // Filter audio content only
     const audioActivity = allActivity.filter(a => {
