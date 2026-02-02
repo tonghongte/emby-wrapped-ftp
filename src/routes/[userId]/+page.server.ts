@@ -124,6 +124,9 @@ async function enhanceTopItemImages(items: TopItem[], type: 'show' | 'movie'): P
 }
 
 export const load: PageServerLoad = async ({ params, url }) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'[userId]/+page.server.ts:126',message:'Page load entry',data:{userId: params.userId, period: url.searchParams.get('period')},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
+    // #endregion
     const { userId } = params;
 
     // Get time range from URL parameter, default to previous year

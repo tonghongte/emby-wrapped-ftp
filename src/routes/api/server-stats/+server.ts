@@ -21,10 +21,16 @@ let cacheTime: number = 0;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export const GET: RequestHandler = async () => {
+// #region agent log
+        fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server-stats/+server.ts:23',message:'GET server-stats entry',data:{cacheTime, hasCachedStats: !!cachedStats},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
+// #endregion
     try {
         // Return cached data if still valid
         if (cachedStats && Date.now() - cacheTime < CACHE_TTL) {
             console.log('Returning cached server stats');
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server-stats/+server.ts:28',message:'Returning cached stats',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
+            // #endregion
             return json(cachedStats);
         }
 
