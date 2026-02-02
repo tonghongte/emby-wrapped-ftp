@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { goto } from "$app/navigation";
+	import { page } from "$app/stores";
 	import CardStack from "$lib/components/CardStack.svelte";
 	import AudioPlayer from "$lib/components/ui/AudioPlayer.svelte";
 	import IntroCard from "$lib/components/cards/IntroCard.svelte";
@@ -13,11 +15,18 @@
 	import FirstLastWatchCard from "$lib/components/cards/FirstLastWatchCard.svelte";
 	import FinaleCard from "$lib/components/cards/FinaleCard.svelte";
 	import PersonalityCard from "$lib/components/cards/PersonalityCard.svelte";
+	import MusicSummaryCard from "$lib/components/cards/MusicSummaryCard.svelte";
 	import type { PageData } from "./$types";
 
 	export let data: PageData;
 
-	$: ({ stats, userImageUrl, serverName } = data);
+	$: ({ stats, userImageUrl, serverName, currentTimeRange, timeRangeOptions } = data);
+
+	function handleTimeRangeChange(event: Event) {
+		const select = event.target as HTMLSelectElement;
+		const newPeriod = select.value;
+		goto(`?period=${newPeriod}`, { replaceState: true });
+	}
 
 	// Build card sequence based on available data
 	interface Card {
@@ -155,7 +164,16 @@
 			});
 		}
 
-		// 13. Always end with finale
+		// 13. Music summary (if we have music data)
+		if (stats.music && stats.music.totalMinutes > 0) {
+			cards.push({
+				type: "music",
+				component: MusicSummaryCard,
+				props: { music: stats.music },
+			});
+		}
+
+		// 14. Always end with finale
 		cards.push({
 			type: "finale",
 			component: FinaleCard,
@@ -165,14 +183,23 @@
 </script>
 
 <svelte:head>
-	<title>{stats.username}'s 2025 Wrapped ◈ Emby for the People</title>
+	<title>{stats.username}'s {stats.timeRangeLabel} Wrapped ◈ Emby for the People</title>
 	<meta
 		name="description"
 		content="{stats.username} watched {Math.round(
 			stats.totalMinutes / 60,
-		)} hours on Emby for the People in 2025."
+		)} hours on Emby for the People in {stats.timeRangeLabel}."
 	/>
 </svelte:head>
+
+<!-- Time Range Selector -->
+<div class="time-range-selector">
+	<select value={currentTimeRange} on:change={handleTimeRangeChange}>
+		{#each timeRangeOptions as option}
+			<option value={option.value}>{option.label}</option>
+		{/each}
+	</select>
+</div>
 
 <CardStack totalCards={cards.length} let:cardIndex let:isActive>
 	{#if isActive}
@@ -186,5 +213,41 @@
 <style>
 	:global(body) {
 		overflow: hidden;
+	}
+
+	.time-range-selector {
+		position: fixed;
+		top: 1rem;
+		right: 1rem;
+		z-index: 100;
+	}
+
+	.time-range-selector select {
+		padding: 0.5rem 1rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: white;
+		background: rgba(0, 0, 0, 0.6);
+		border: 1px solid rgba(255, 255, 255, 0.2);
+		border-radius: 0.5rem;
+		cursor: pointer;
+		backdrop-filter: blur(8px);
+		-webkit-backdrop-filter: blur(8px);
+		transition: all 0.2s ease;
+	}
+
+	.time-range-selector select:hover {
+		background: rgba(0, 0, 0, 0.8);
+		border-color: rgba(255, 255, 255, 0.4);
+	}
+
+	.time-range-selector select:focus {
+		outline: none;
+		border-color: rgba(255, 255, 255, 0.6);
+	}
+
+	.time-range-selector select option {
+		background: #1a1a2e;
+		color: white;
 	}
 </style>

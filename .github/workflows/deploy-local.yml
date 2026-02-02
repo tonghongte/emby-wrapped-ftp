@@ -1,0 +1,59 @@
+name: Deploy to Local Docker Desktop
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create .env file from secrets
+        run: |
+          cat > .env << EOF
+          EMBY_URL=${{ secrets.EMBY_URL }}
+          EMBY_API_KEY=${{ secrets.EMBY_API_KEY }}
+          TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}
+          PUBLIC_URL=${{ secrets.PUBLIC_URL }}
+          CACHE_TTL=${{ secrets.CACHE_TTL }}
+          ANALYTICS_SCRIPT=${{ secrets.ANALYTICS_SCRIPT }}
+          FILTER_USER_ID=${{ secrets.FILTER_USER_ID }}
+          EOF
+
+      - name: Stop existing container
+        run: docker compose down || true
+
+      - name: Build and start container
+        run: docker compose up -d --build
+
+      - name: Wait for health check
+        run: |
+          echo "Waiting for container to be healthy..."
+          for i in {1..30}; do
+            if docker inspect --format='{{.State.Health.Status}}' emby-wrapped 2>/dev/null | grep -q "healthy"; then
+              echo "Container is healthy!"
+              exit 0
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 5
+          done
+          echo "Container health check timed out"
+          docker logs emby-wrapped
+          exit 1
+
+      - name: Cleanup .env file
+        if: always()
+        run: rm -f .env
+
+      - name: Show deployment status
+        run: |
+          echo "=== Container Status ==="
+          docker ps -a --filter "name=emby-wrapped"
+          echo ""
+          echo "=== Recent Logs ==="
+          docker logs --tail 20 emby-wrapped

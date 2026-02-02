@@ -1,4 +1,37 @@
+import { env } from '$env/dynamic/private';
 import { emby, type PlaybackActivity, type EmbyItem } from './emby';
+
+export interface TimeRange {
+    type: 'year' | 'month';
+    year: number;
+    month?: number;  // 1-12, only for type 'month'
+}
+
+export function parseTimeRange(value: string): TimeRange {
+    if (value.indexOf('-') !== -1) {
+        // Format: "2026-01" (month)
+        const parts = value.split('-');
+        return { type: 'month', year: Number(parts[0]), month: Number(parts[1]) };
+    }
+    // Format: "2025" (year)
+    return { type: 'year', year: Number(value) };
+}
+
+export function formatTimeRangeLabel(range: TimeRange): string {
+    if (range.type === 'month' && range.month) {
+        const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+        return `${range.year}年${monthNames[range.month - 1]}`;
+    }
+    return `${range.year}年度`;
+}
+
+export function timeRangeToString(range: TimeRange): string {
+    if (range.type === 'month' && range.month) {
+        const monthStr = range.month < 10 ? '0' + range.month : String(range.month);
+        return `${range.year}-${monthStr}`;
+    }
+    return String(range.year);
+}
 
 export interface TopItem {
     id: string;
@@ -40,10 +73,50 @@ export interface MusicStats {
     topAlbums: { name: string; artist: string; minutes: number }[];
 }
 
+export interface FullMusicStats {
+    userId: string;
+    username: string;
+    year: number;
+    timeRange: string;
+    timeRangeLabel: string;
+    generatedAt: string;
+
+    // Time stats
+    totalMinutes: number;
+    totalDays: number;
+    uniqueTracks: number;
+    totalPlays: number;
+
+    // Top content
+    topArtists: { name: string; minutes: number; count: number; percentage: number }[];
+    topTracks: { name: string; artist: string; minutes: number; count: number }[];
+    topAlbums: { name: string; artist: string; minutes: number; count: number }[];
+
+    // Temporal patterns
+    heatmap: HeatmapData;
+    peakHour: number;
+    peakDay: number;
+    peakMonth: number;
+
+    // Listening personality
+    isNightOwl: boolean;
+    isEarlyBird: boolean;
+    isWeekendWarrior: boolean;
+
+    // First and last
+    firstListen: { name: string; artist: string; date: string } | null;
+    lastListen: { name: string; artist: string; date: string } | null;
+
+    // Diversity
+    artistDiversity: number;  // 0-1, higher = more diverse
+}
+
 export interface UserStats {
     userId: string;
     username: string;
     year: number;
+    timeRange: string;  // e.g., "2025" or "2026-01"
+    timeRangeLabel: string;  // e.g., "2025年度" or "2026年1月"
     generatedAt: string;
 
     // Time stats
@@ -102,33 +175,78 @@ function parseDateTime(date: string, time: string): Date {
 }
 
 /**
+ * Check if a date matches the given time range
+ */
+function matchesTimeRange(dateStr: string, range: TimeRange): boolean {
+    if (range.type === 'year') {
+        return dateStr.indexOf(String(range.year)) === 0;
+    }
+    // Month: check both year and month
+    const monthStr = range.month! < 10 ? '0' + range.month : String(range.month);
+    const prefix = `${range.year}-${monthStr}`;
+    return dateStr.indexOf(prefix) === 0;
+}
+
+/**
  * Aggregate playback data into user stats
  */
-export async function aggregateUserStats(userId: string, username: string, year: number = 2025): Promise<UserStats> {
+export async function aggregateUserStats(userId: string, username: string, timeRange: TimeRange | number = 2025): Promise<UserStats> {
+    // Convert legacy year number to TimeRange
+    const range: TimeRange = typeof timeRange === 'number'
+        ? { type: 'year', year: timeRange }
+        : timeRange;
+
     // Fetch user playback activity
     const allActivity = await emby.getUserPlaybackActivity(userId, 365);
 
     // Separate video and audio content
     const videoActivity = allActivity.filter(a => {
-        if (!a.date.startsWith(String(year))) return false;
+        if (!matchesTimeRange(a.date, range)) return false;
         const itemType = a.item_type.toLowerCase();
         // Exclude music and audio from video stats
         return itemType !== 'audio' && itemType !== 'musicvideo';
     });
 
     const audioActivity = allActivity.filter(a => {
-        if (!a.date.startsWith(String(year))) return false;
+        if (!matchesTimeRange(a.date, range)) return false;
         const itemType = a.item_type.toLowerCase();
         return itemType === 'audio';
     });
 
-    // Calculate total time (duration is in seconds)
-    const totalMinutes = Math.round(videoActivity.reduce((sum, a) => sum + parseInt(a.duration || '0', 10), 0) / 60);
+    // Collect all unique item IDs we need to fetch details for
+    const allItemIds = new Set<string>();
+    videoActivity.forEach(a => allItemIds.add(String(a.item_id)));
+
+    // Use FILTER_USER_ID if set, otherwise use the requesting user's ID
+    // This allows filtering out NSFW content by using a restricted user's permissions
+    const filterUserId = env.FILTER_USER_ID || userId;
+
+    // Fetch item details for ALL items (for correct images)
+    // Items the filter user doesn't have permission to access will not be returned
+    const itemDetails = new Map<string, EmbyItem>();
+    const itemIdList = [...allItemIds];
+
+    try {
+        // Batch fetch items in chunks of 50
+        for (let i = 0; i < Math.min(itemIdList.length, 200); i += 50) {
+            const batch = itemIdList.slice(i, i + 50);
+            const items = await emby.getItems(filterUserId, batch);
+            items.forEach(item => itemDetails.set(item.Id, item));
+        }
+    } catch (e) {
+        console.warn('Failed to fetch item details:', e);
+    }
+
+    // Filter video activity to only include items the filter user has permission to access
+    const accessibleVideoActivity = videoActivity.filter(a => itemDetails.has(String(a.item_id)));
+
+    // Calculate total time (duration is in seconds) - only for accessible items
+    const totalMinutes = Math.round(accessibleVideoActivity.reduce((sum, a) => sum + parseInt(a.duration || '0', 10), 0) / 60);
     const totalDays = Math.round(totalMinutes / 1440 * 100) / 100;
 
-    // Count by type
-    const movies = videoActivity.filter(a => a.item_type.toLowerCase() === 'movie');
-    const episodes = videoActivity.filter(a => a.item_type.toLowerCase() === 'episode');
+    // Count by type - only for accessible items
+    const movies = accessibleVideoActivity.filter(a => a.item_type.toLowerCase() === 'movie');
+    const episodes = accessibleVideoActivity.filter(a => a.item_type.toLowerCase() === 'episode');
 
     // Get unique items
     const uniqueMovieIds = new Set(movies.map(m => String(m.item_id)));
@@ -139,29 +257,11 @@ export async function aggregateUserStats(userId: string, username: string, year:
     const showStats = new Map<string, { minutes: number; count: number; name: string; episodes: Set<string>; seriesId?: string }>();
     const genreMinutes = new Map<string, number>();
 
-    // Collect all unique item IDs we need to fetch details for
-    const allItemIds = new Set<string>();
-    videoActivity.forEach(a => allItemIds.add(String(a.item_id)));
-
-    // Fetch item details for ALL items (for correct images)
-    const itemDetails = new Map<string, EmbyItem>();
-    const itemIdList = [...allItemIds];
-
-    try {
-        // Batch fetch items in chunks of 50
-        for (let i = 0; i < Math.min(itemIdList.length, 200); i += 50) {
-            const batch = itemIdList.slice(i, i + 50);
-            const items = await emby.getItems(userId, batch);
-            items.forEach(item => itemDetails.set(item.Id, item));
-        }
-    } catch (e) {
-        console.warn('Failed to fetch item details:', e);
-    }
-
-    // Process each activity
-    for (const activity of videoActivity) {
+    // Process each activity - only accessible items
+    for (const activity of accessibleVideoActivity) {
         const itemId = String(activity.item_id);
-        const item = itemDetails.get(itemId);
+        const item = itemDetails.get(itemId)!;
+
         const minutes = parseInt(activity.duration || '0', 10) / 60;
         const itemType = activity.item_type.toLowerCase();
 
@@ -258,12 +358,12 @@ export async function aggregateUserStats(userId: string, username: string, year:
             percentage: Math.round((minutes / totalGenreMinutes) * 100)
         }));
 
-    // Calculate heatmaps
+    // Calculate heatmaps - only for accessible items
     const hours = new Array(24).fill(0);
     const days = new Array(7).fill(0);
     const months = new Array(12).fill(0);
 
-    for (const activity of videoActivity) {
+    for (const activity of accessibleVideoActivity) {
         const date = parseDateTime(activity.date, activity.time);
         const minutes = parseInt(activity.duration || '0', 10) / 60;
 
@@ -351,8 +451,8 @@ export async function aggregateUserStats(userId: string, username: string, year:
             .sort((a, b) => b.episodeCount - a.episodeCount)[0] || null
         : null;
 
-    // First and last watch
-    const sortedActivity = [...videoActivity].sort((a, b) => {
+    // First and last watch - only for accessible items
+    const sortedActivity = [...accessibleVideoActivity].sort((a, b) => {
         const dateA = parseDateTime(a.date, a.time);
         const dateB = parseDateTime(b.date, b.time);
         return dateA.getTime() - dateB.getTime();
@@ -408,7 +508,9 @@ export async function aggregateUserStats(userId: string, username: string, year:
     return {
         userId,
         username,
-        year,
+        year: range.year,
+        timeRange: timeRangeToString(range),
+        timeRangeLabel: formatTimeRangeLabel(range),
         generatedAt: new Date().toISOString(),
         totalMinutes,
         totalDays,
@@ -448,5 +550,170 @@ export async function aggregateUserStats(userId: string, username: string, year:
             ? (movies.reduce((sum, m) => sum + parseInt(m.duration || '0', 10), 0) / 60) /
             Math.max(1, episodes.reduce((sum, e) => sum + parseInt(e.duration || '0', 10), 0) / 60)
             : uniqueMovieIds.size > 0 ? 10 : 0  // Movie-only viewer
+    };
+}
+
+/**
+ * Aggregate music playback data into full music stats
+ */
+export async function aggregateMusicStats(userId: string, username: string, timeRange: TimeRange | number = 2025): Promise<FullMusicStats> {
+    // Convert legacy year number to TimeRange
+    const range: TimeRange = typeof timeRange === 'number'
+        ? { type: 'year', year: timeRange }
+        : timeRange;
+
+    // Fetch user playback activity
+    const allActivity = await emby.getUserPlaybackActivity(userId, 365);
+
+    // Filter audio content only
+    const audioActivity = allActivity.filter(a => {
+        if (!matchesTimeRange(a.date, range)) return false;
+        const itemType = a.item_type.toLowerCase();
+        return itemType === 'audio';
+    });
+
+    // Calculate total time
+    const totalMinutes = Math.round(audioActivity.reduce((sum, a) => sum + parseInt(a.duration || '0', 10), 0) / 60);
+    const totalDays = Math.round(totalMinutes / 1440 * 100) / 100;
+
+    // Track unique tracks and aggregate stats
+    const trackStats = new Map<string, { name: string; artist: string; minutes: number; count: number }>();
+    const artistStats = new Map<string, { minutes: number; count: number }>();
+    const albumStats = new Map<string, { name: string; artist: string; minutes: number; count: number }>();
+
+    for (const track of audioActivity) {
+        const parts = track.item_name.split(' - ');
+        const artist = parts.length > 1 ? parts[0].trim() : 'Unknown Artist';
+        const trackName = parts.length > 1 ? parts.slice(1).join(' - ').trim() : track.item_name;
+        const minutes = parseInt(track.duration || '0', 10) / 60;
+        const trackKey = `${artist}|||${trackName}`;
+
+        // Track stats
+        const existingTrack = trackStats.get(trackKey) || { name: trackName, artist, minutes: 0, count: 0 };
+        existingTrack.minutes += minutes;
+        existingTrack.count += 1;
+        trackStats.set(trackKey, existingTrack);
+
+        // Artist stats
+        const existingArtist = artistStats.get(artist) || { minutes: 0, count: 0 };
+        existingArtist.minutes += minutes;
+        existingArtist.count += 1;
+        artistStats.set(artist, existingArtist);
+    }
+
+    // Build top lists
+    const totalArtistMinutes = [...artistStats.values()].reduce((sum, a) => sum + a.minutes, 0) || 1;
+
+    const topArtists = [...artistStats.entries()]
+        .sort((a, b) => b[1].minutes - a[1].minutes)
+        .slice(0, 10)
+        .map(([name, stats]) => ({
+            name,
+            minutes: Math.round(stats.minutes),
+            count: stats.count,
+            percentage: Math.round((stats.minutes / totalArtistMinutes) * 100)
+        }));
+
+    const topTracks = [...trackStats.values()]
+        .sort((a, b) => b.minutes - a.minutes)
+        .slice(0, 10)
+        .map(t => ({
+            name: t.name,
+            artist: t.artist,
+            minutes: Math.round(t.minutes),
+            count: t.count
+        }));
+
+    const topAlbums = [...albumStats.values()]
+        .sort((a, b) => b.minutes - a.minutes)
+        .slice(0, 10)
+        .map(a => ({
+            name: a.name,
+            artist: a.artist,
+            minutes: Math.round(a.minutes),
+            count: a.count
+        }));
+
+    // Calculate heatmaps
+    const hours = new Array(24).fill(0);
+    const days = new Array(7).fill(0);
+    const months = new Array(12).fill(0);
+
+    for (const track of audioActivity) {
+        const date = parseDateTime(track.date, track.time);
+        const minutes = parseInt(track.duration || '0', 10) / 60;
+
+        hours[date.getHours()] += minutes;
+        days[date.getDay()] += minutes;
+        months[date.getMonth()] += minutes;
+    }
+
+    // Find peaks
+    const peakHour = hours.indexOf(Math.max(...hours));
+    const peakDay = days.indexOf(Math.max(...days));
+    const peakMonth = months.indexOf(Math.max(...months));
+
+    // Listening personality
+    const nightMinutes = hours.slice(21, 24).reduce((a, b) => a + b, 0) + hours.slice(0, 3).reduce((a, b) => a + b, 0);
+    const morningMinutes = hours.slice(5, 10).reduce((a, b) => a + b, 0);
+    const weekendMinutes = days[0] + days[6];
+    const weekdayMinutes = days.slice(1, 6).reduce((a, b) => a + b, 0);
+
+    const isNightOwl = totalMinutes > 0 && nightMinutes > totalMinutes * 0.3;
+    const isEarlyBird = totalMinutes > 0 && morningMinutes > totalMinutes * 0.25;
+    const isWeekendWarrior = weekdayMinutes > 0 && weekendMinutes > weekdayMinutes * (2 / 5) * 1.5;
+
+    // First and last listen
+    const sortedActivity = [...audioActivity].sort((a, b) => {
+        const dateA = parseDateTime(a.date, a.time);
+        const dateB = parseDateTime(b.date, b.time);
+        return dateA.getTime() - dateB.getTime();
+    });
+
+    const parseTrackInfo = (item: typeof audioActivity[0]) => {
+        const parts = item.item_name.split(' - ');
+        return {
+            artist: parts.length > 1 ? parts[0].trim() : 'Unknown Artist',
+            name: parts.length > 1 ? parts.slice(1).join(' - ').trim() : item.item_name,
+            date: item.date
+        };
+    };
+
+    const firstListen = sortedActivity.length > 0 ? parseTrackInfo(sortedActivity[0]) : null;
+    const lastListen = sortedActivity.length > 0 ? parseTrackInfo(sortedActivity[sortedActivity.length - 1]) : null;
+
+    // Artist diversity
+    const artistDiversity = topArtists.length > 0
+        ? 1 - (topArtists.reduce((sum, a) => sum + Math.pow(a.percentage / 100, 2), 0))
+        : 0;
+
+    return {
+        userId,
+        username,
+        year: range.year,
+        timeRange: timeRangeToString(range),
+        timeRangeLabel: formatTimeRangeLabel(range),
+        generatedAt: new Date().toISOString(),
+        totalMinutes,
+        totalDays,
+        uniqueTracks: trackStats.size,
+        totalPlays: audioActivity.length,
+        topArtists,
+        topTracks,
+        topAlbums,
+        heatmap: {
+            hours: hours.map(h => Math.round(h)),
+            days: days.map(d => Math.round(d)),
+            months: months.map(m => Math.round(m))
+        },
+        peakHour,
+        peakDay,
+        peakMonth,
+        isNightOwl,
+        isEarlyBird,
+        isWeekendWarrior,
+        firstListen,
+        lastListen,
+        artistDiversity
     };
 }
