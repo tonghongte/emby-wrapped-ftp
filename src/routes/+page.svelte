@@ -37,9 +37,15 @@
 	let contentPhase = 0;
 	let ctaPhase = 0;
 
-	onMount(async () => {
+	// Fetch server stats when selectedTimeRange changes
+	$: if (selectedTimeRange) {
+		fetchServerStats();
+	}
+
+	async function fetchServerStats() {
+		statsLoading = true;
 		try {
-			const response = await fetch("/api/server-stats");
+			const response = await fetch(`/api/server-stats?period=${selectedTimeRange}`);
 			if (response.ok) {
 				serverStats = await response.json();
 			}
@@ -48,6 +54,10 @@
 		} finally {
 			statsLoading = false;
 		}
+	}
+
+	onMount(async () => {
+		// Initial fetch is now handled by the $: selectedTimeRange block
 	});
 
 	function handleCardChange(event: CustomEvent<{ index: number }>) {
@@ -234,9 +244,19 @@
 						class="big-title font-display"
 						class:show={introPhase >= 2}
 					>
-						<span class="year">2025</span>
+						<span class="year">{displayYear}</span>
 						<span class="wrapped">Wrapped</span>
 					</h1>
+
+					<!-- Time Selector -->
+					<div class="time-selector-wrapper" class:show={introPhase >= 2} on:click|stopPropagation>
+						<select bind:value={selectedTimeRange} class="time-select">
+							{#each data.timeRangeOptions as option}
+								<option value={option.value}>{option.label}</option>
+							{#/each}
+						</select>
+						<div class="select-arrow">{UNICODE.triangleDown}</div>
+					</div>
 
 					<p class="server-name" class:show={introPhase >= 3}>
 						<span class="accent">{UNICODE.triangleUp}</span>
@@ -589,6 +609,19 @@
 	.cta-title.show,
 	.cta-subtitle.show,
 	.cta-btn.show {
+		opacity: 1;
+		transform: translateY(0);
+	}
+
+	/* Time Selector Alignment for Intro Card */
+	.intro-card .time-selector-wrapper {
+		opacity: 0;
+		transform: translateY(20px);
+		transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+		margin-top: -0.5rem; /* Pull up closer to title */
+	}
+
+	.intro-card .time-selector-wrapper.show {
 		opacity: 1;
 		transform: translateY(0);
 	}

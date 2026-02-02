@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import { emby } from '$lib/server/emby';
 import { tmdb } from '$lib/server/tmdb';
 import type { RequestHandler } from './$types';
-import type { TopItem } from '$lib/server/stats';
+import { parseTimeRange, timeRangeToString, calculateLookbackDays, matchesTimeRange, type TopItem } from '$lib/server/stats';
 
 export interface ServerStats {
     totalUsers: number;
@@ -13,31 +13,37 @@ export interface ServerStats {
     monthlyMinutes: number[];
     topShows: TopItem[];
     topMovies: TopItem[];
+    year: number;
+    timeRangeLabel: string;
 }
 
 // Cache for server stats (expires after 5 minutes)
-let cachedStats: ServerStats | null = null;
-let cacheTime: number = 0;
+const cachedStatsMap = new Map<string, { stats: ServerStats; time: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-export const GET: RequestHandler = async () => {
-// #region agent log
-        fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server-stats/+server.ts:23',message:'GET server-stats entry',data:{cacheTime, hasCachedStats: !!cachedStats},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
-// #endregion
+export const GET: RequestHandler = async ({ url }) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server-stats/+server.ts:24',message:'GET server-stats entry',data:{period: url.searchParams.get('period')},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{});
+    // #endregion
+    
     try {
+        const periodParam = url.searchParams.get('period') || String(new Date().getFullYear() - 1);
+        const timeRange = parseTimeRange(periodParam);
+        const timeRangeStr = timeRangeToString(timeRange);
+        const cacheKey = timeRangeStr;
+
         // Return cached data if still valid
-        if (cachedStats && Date.now() - cacheTime < CACHE_TTL) {
-            console.log('Returning cached server stats');
-            // #region agent log
-            fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server-stats/+server.ts:28',message:'Returning cached stats',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
-            // #endregion
-            return json(cachedStats);
+        const cached = cachedStatsMap.get(cacheKey);
+        if (cached && Date.now() - cached.time < CACHE_TTL) {
+            console.log(`Returning cached server stats for ${cacheKey}`);
+            return json(cached.stats);
         }
 
-        console.log('Generating fresh server stats...');
+        console.log(`Generating fresh server stats for ${cacheKey}...`);
         const startTime = Date.now();
 
         const users = await emby.getUsers();
+        const daysToFetch = calculateLookbackDays(timeRange);
 
         // Aggregate stats from all users in parallel (batch of 10)
         let totalMinutes = 0;
@@ -55,7 +61,7 @@ export const GET: RequestHandler = async () => {
             const batchResults = await Promise.allSettled(
                 batch.map(async (user) => {
                     try {
-                        const activity = await emby.getUserPlaybackActivity(user.Id, 365);
+                        const activity = await emby.getUserPlaybackActivity(user.Id, daysToFetch);
                         return { user, activity };
                     } catch {
                         return null;
@@ -68,6 +74,9 @@ export const GET: RequestHandler = async () => {
                     const { activity } = result.value;
 
                     for (const item of activity) {
+                        // Filter by time range
+                        if (!matchesTimeRange(item.date, timeRange)) continue;
+
                         const durationSeconds = parseInt(item.duration, 10) || 0;
                         const minutes = Math.round(durationSeconds / 60);
 
@@ -152,14 +161,15 @@ export const GET: RequestHandler = async () => {
             peakMonth,
             monthlyMinutes,
             topShows,
-            topMovies
+            topMovies,
+            year: timeRange.year,
+            timeRangeLabel: periodParam
         };
 
         // Cache the results
-        cachedStats = stats;
-        cacheTime = Date.now();
+        cachedStatsMap.set(cacheKey, { stats, time: Date.now() });
 
-        console.log(`Server stats generated in ${Date.now() - startTime}ms`);
+        console.log(`Server stats for ${cacheKey} generated in ${Date.now() - startTime}ms`);
 
         return json(stats);
     } catch (e) {
