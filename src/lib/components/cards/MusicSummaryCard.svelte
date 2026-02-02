@@ -11,11 +11,10 @@
 		setTimeout(() => (visible = true), 100);
 	});
 
-	$: hours = Math.round(music.totalMinutes / 60);
 	$: topArtist = music.topArtists[0];
-    // Show top 3 tracks if available, fallback to other artists if needed
-	$: topTracks = music.topTracks?.slice(0, 3) || [];
-	$: otherArtists = music.topArtists.slice(1, 4); // Show top 2-4 artists
+    // Show top 5 tracks and top 2-5 artists side by side
+	$: topTracks = music.topTracks?.slice(0, 5) || [];
+	$: otherArtists = music.topArtists.slice(1, 6); // Show top 2-6 artists (5 items)
 </script>
 
 <div class="card-base" class:visible id="music-summary-card">
@@ -33,13 +32,6 @@
 			<div class="unit">hours of music</div>
 		</div>
 
-		<div class="stats-row">
-			<div class="stat">
-				<span class="stat-value">{music.trackCount.toLocaleString()}</span>
-				<span class="stat-label">plays</span>
-			</div>
-		</div>
-
 		{#if topArtist}
 			<div class="top-artist-section">
 				<span class="section-label">Top Artist</span>
@@ -54,35 +46,106 @@
 				</div>
 			</div>
 
-            <!-- Top Songs Section -->
-			{#if topTracks.length > 0}
-				<div class="other-artists">
-                    <span class="section-label" style="align-self: center; margin-bottom: 0.25rem;">Top Songs</span>
-					{#each topTracks as track, i}
-						<div class="artist-item">
-							<span class="rank">#{i + 1}</span>
-							<span class="name">{track.name}</span>
-                            <span class="time" style="opacity: 0.7;">{track.artist}</span>
-							<span class="time">{track.count} plays</span>
-						</div>
-					{/each}
-				</div>
-            {:else if otherArtists.length > 0}
-				<div class="other-artists">
-					{#each otherArtists as artist, i}
-						<div class="artist-item">
-							<span class="rank">#{i + 2}</span>
-							<span class="name">{artist.name}</span>
-							<span class="time">{Math.round(artist.minutes)} min</span>
-						</div>
-					{/each}
-				</div>
-			{/if}
+            <div class="lists-container">
+                {#if otherArtists.length > 0}
+                    <div class="list-column">
+                        <span class="section-label">Top Artists</span>
+                        <div class="compact-list">
+                            {#each otherArtists as artist, i}
+                                <div class="compact-item">
+                                    <span class="rank">#{i + 2}</span>
+                                    <div class="info">
+                                        <span class="name">{artist.name}</span>
+                                        <span class="sub">{Math.round(artist.minutes)}m</span>
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
+                    </div>
+                {/if}
+
+                {#if topTracks.length > 0}
+                    <div class="list-column">
+                        <span class="section-label">Top Songs</span>
+                        <div class="compact-list">
+                            {#each topTracks as track, i}
+                                <div class="compact-item">
+                                    <span class="rank">#{i + 1}</span>
+                                    <div class="info">
+                                        <span class="name">{track.name}</span>
+                                        <span class="sub">{track.count}p · {track.artist}</span>
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
+                    </div>
+                {/if}
+            </div>
 		{/if}
 	</div>
 </div>
 
 <style>
+    /* ... existing styles ... */
+    .lists-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+    .list-column {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 0; /* Enable truncation in grid item */
+    }
+    .compact-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .compact-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4rem 0.5rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+        font-size: 0.8rem;
+        height: 42px; /* Fixed height for consistency */
+    }
+    .compact-item .rank {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.7rem;
+        color: #ec4899;
+        width: 1.2rem;
+        flex-shrink: 0;
+    }
+    .compact-item .info {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        flex: 1;
+        justify-content: center;
+    }
+    .compact-item .name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: 500;
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.9);
+    }
+    .compact-item .sub {
+        font-size: 0.65rem;
+        color: rgba(255, 255, 255, 0.4);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
 	.card-base {
 		position: relative;
 		width: 100%;
@@ -119,17 +182,17 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 1.5rem;
-		padding: 2rem;
+		gap: 1rem; /* Reduced gap */
+		padding: 1.5rem; /* Reduced padding */
 		text-align: center;
 		width: 100%;
-		max-width: 400px;
+		max-width: 500px; /* Increased max-width for side-by-side */
 	}
 
 	.header {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.25rem;
 	}
 
 	.label {
@@ -148,7 +211,7 @@
 	}
 
 	.big-number {
-		font-size: 5rem;
+		font-size: 4rem; /* Slightly smaller */
 		font-weight: 800;
 		line-height: 0.9;
 		background: linear-gradient(180deg, #8b5cf6 0%, #ec4899 100%);
@@ -159,14 +222,13 @@
 	}
 
 	.unit {
-		font-size: 1.25rem;
+		font-size: 1rem;
 		color: rgba(255, 255, 255, 0.7);
 		font-weight: 500;
 	}
 
 	.stats-row {
-		display: flex;
-		gap: 2rem;
+        display: none; /* Hide redundant stats row to save space */
 	}
 
 	.stat {
@@ -193,7 +255,7 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 0.5rem;
 		width: 100%;
 	}
 
@@ -202,13 +264,14 @@
 		color: rgba(255, 255, 255, 0.4);
 		text-transform: uppercase;
 		letter-spacing: 0.1em;
+        text-align: center;
 	}
 
 	.top-artist {
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-		padding: 1rem 1.5rem;
+		padding: 0.75rem 1.25rem;
 		background: rgba(255, 255, 255, 0.03);
 		border: 1px solid rgba(255, 255, 255, 0.08);
 		border-radius: 1rem;
@@ -216,14 +279,14 @@
 	}
 
 	.artist-icon {
-		width: 48px;
-		height: 48px;
+		width: 40px;
+		height: 40px;
 		border-radius: 50%;
 		background: linear-gradient(135deg, #8b5cf6, #ec4899);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 1.25rem;
+		font-size: 1rem;
 		font-weight: 700;
 		color: white;
 		flex-shrink: 0;
@@ -234,12 +297,17 @@
 		flex-direction: column;
 		align-items: flex-start;
 		gap: 0.125rem;
+        overflow: hidden;
 	}
 
 	.artist-name {
-		font-size: 1.1rem;
+		font-size: 1rem;
 		font-weight: 600;
 		color: white;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
 	}
 
 	.artist-stats {
