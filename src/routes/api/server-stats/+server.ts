@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
-import { emby } from '$lib/server/emby';
+import { emby, type EmbyItem } from '$lib/server/emby';
 import { tmdb } from '$lib/server/tmdb';
+import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { parseTimeRange, timeRangeToString, calculateLookbackDays, matchesTimeRange, type TopItem } from '$lib/server/stats';
 
@@ -36,6 +37,9 @@ export const GET: RequestHandler = async ({ url }) => {
         const cached = cachedStatsMap.get(cacheKey);
         if (cached && Date.now() - cached.time < CACHE_TTL) {
             console.log(`Returning cached server stats for ${cacheKey}`);
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server-stats/+server.ts:39',message:'Returning cached server stats',data:{cacheKey},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{});
+            // #endregion
             return json(cached.stats);
         }
 
@@ -44,20 +48,22 @@ export const GET: RequestHandler = async ({ url }) => {
 
         const users = await emby.getUsers();
         const daysToFetch = calculateLookbackDays(timeRange);
+        
+        // Log environment variable for debugging
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server-stats/+server.ts:50',message:'Checking FILTER_USER_ID',data:{FILTER_USER_ID: env.FILTER_USER_ID, hasFilter: !!env.FILTER_USER_ID},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{});
+        // #endregion
 
-        // Aggregate stats from all users in parallel (batch of 10)
-        let totalMinutes = 0;
-        let totalMovies = 0;
-        let totalEpisodes = 0;
-        const monthlyMinutes = new Array(12).fill(0);
-        const showMap = new Map<string, { name: string; minutes: number; count: number }>();
-        const movieMap = new Map<string, { name: string; minutes: number; count: number }>();
+        const filterUserId = env.FILTER_USER_ID;
 
-        // Process users in parallel batches of 10
+        // Collect all unique item IDs from all users
+        const allItemIds = new Set<string>();
+        const userActivities: { user: any, activity: any[] }[] = [];
+
+        // Fetch activities in parallel
         const BATCH_SIZE = 10;
         for (let i = 0; i < users.length; i += BATCH_SIZE) {
             const batch = users.slice(i, i + BATCH_SIZE);
-
             const batchResults = await Promise.allSettled(
                 batch.map(async (user) => {
                     try {
@@ -71,47 +77,100 @@ export const GET: RequestHandler = async ({ url }) => {
 
             for (const result of batchResults) {
                 if (result.status === 'fulfilled' && result.value) {
-                    const { activity } = result.value;
-
-                    for (const item of activity) {
-                        // Filter by time range
-                        if (!matchesTimeRange(item.date, timeRange)) continue;
-
-                        const durationSeconds = parseInt(item.duration, 10) || 0;
-                        const minutes = Math.round(durationSeconds / 60);
-
-                        // Skip music
-                        const itemType = item.item_type?.toLowerCase();
-                        if (itemType === 'audio' || itemType === 'musicalbum') {
-                            continue;
+                    userActivities.push(result.value);
+                    result.value.activity.forEach(item => {
+                        // Pre-filter by time range to reduce item fetch count
+                        if (matchesTimeRange(item.date, timeRange)) {
+                            allItemIds.add(String(item.item_id));
                         }
+                    });
+                }
+            }
+        }
 
-                        totalMinutes += minutes;
+        // Fetch item details using filter user (if set) or skip filtering
+        // If FILTER_USER_ID is set, only items accessible to that user will be returned
+        const itemDetails = new Map<string, EmbyItem>();
+        const itemIdList = [...allItemIds];
+        
+        // Use filter user ID if provided, otherwise use the first admin user found (or just skip filtering logic if none)
+        // Ideally we should use a specific user for filtering. If env.FILTER_USER_ID is not set, 
+        // we might want to default to including everything (no filter) or pick an admin.
+        // For server stats, usually we want to filter by a specific restricted user to avoid NSFW content.
+        // If no filter user is provided, we fetch items using the first user (might be incomplete if that user has restrictions)
+        // or better, fetch as admin. But here we stick to the requirement: apply FILTER_USER_ID.
+        
+        const fetchUserId = filterUserId || (users.find(u => u.Policy?.IsAdministrator)?.Id || users[0]?.Id);
 
-                        // Parse date for monthly breakdown
-                        const date = new Date(item.date);
-                        const month = date.getMonth();
-                        if (month >= 0 && month < 12) {
-                            monthlyMinutes[month] += minutes;
-                        }
+        if (itemIdList.length > 0 && fetchUserId) {
+            try {
+                // Batch fetch items
+                for (let i = 0; i < Math.min(itemIdList.length, 500); i += 50) { // Limit to top 500 unique items to prevent massive requests
+                    const batch = itemIdList.slice(i, i + 50);
+                    const items = await emby.getItems(fetchUserId, batch);
+                    items.forEach(item => itemDetails.set(item.Id, item));
+                }
+            } catch (e) {
+                console.warn('Failed to fetch item details for server stats:', e);
+            }
+        }
 
-                        // Count by type
-                        if (itemType === 'movie') {
-                            totalMovies++;
-                            const name = item.item_name;
-                            const existing = movieMap.get(name) || { name, minutes: 0, count: 0 };
-                            existing.minutes += minutes;
-                            existing.count += 1;
-                            movieMap.set(name, existing);
-                        } else if (itemType === 'episode') {
-                            totalEpisodes++;
-                            const showName = item.item_name.split(' - ')[0] || item.item_name;
-                            const existing = showMap.get(showName) || { name: showName, minutes: 0, count: 0 };
-                            existing.minutes += minutes;
-                            existing.count += 1;
-                            showMap.set(showName, existing);
-                        }
-                    }
+        // Aggregate stats
+        let totalMinutes = 0;
+        let totalMovies = 0;
+        let totalEpisodes = 0;
+        const monthlyMinutes = new Array(12).fill(0);
+        const showMap = new Map<string, { name: string; minutes: number; count: number }>();
+        const movieMap = new Map<string, { name: string; minutes: number; count: number }>();
+
+        for (const { activity } of userActivities) {
+            for (const item of activity) {
+                // Filter by time range
+                if (!matchesTimeRange(item.date, timeRange)) continue;
+
+                // Check permission / existence
+                // If filterUserId is set, we strictly require the item to be found in itemDetails
+                if (filterUserId && !itemDetails.has(String(item.item_id))) {
+                    continue;
+                }
+
+                // If no filter user, we still use itemDetails if available to get better metadata, but don't strictly require it?
+                // Actually, to be safe and consistent with "apply FILTER_USER_ID", if it's set, we filter.
+                // If it's NOT set, we count everything.
+                
+                const durationSeconds = parseInt(item.duration, 10) || 0;
+                const minutes = Math.round(durationSeconds / 60);
+
+                // Skip music
+                const itemType = item.item_type?.toLowerCase();
+                if (itemType === 'audio' || itemType === 'musicalbum') {
+                    continue;
+                }
+
+                totalMinutes += minutes;
+
+                // Parse date for monthly breakdown
+                const date = new Date(item.date);
+                const month = date.getMonth();
+                if (month >= 0 && month < 12) {
+                    monthlyMinutes[month] += minutes;
+                }
+
+                // Count by type
+                if (itemType === 'movie') {
+                    totalMovies++;
+                    const name = item.item_name;
+                    const existing = movieMap.get(name) || { name, minutes: 0, count: 0 };
+                    existing.minutes += minutes;
+                    existing.count += 1;
+                    movieMap.set(name, existing);
+                } else if (itemType === 'episode') {
+                    totalEpisodes++;
+                    const showName = item.item_name.split(' - ')[0] || item.item_name;
+                    const existing = showMap.get(showName) || { name: showName, minutes: 0, count: 0 };
+                    existing.minutes += minutes;
+                    existing.count += 1;
+                    showMap.set(showName, existing);
                 }
             }
         }
