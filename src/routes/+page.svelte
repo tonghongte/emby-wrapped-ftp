@@ -253,7 +253,7 @@
 						<select bind:value={selectedTimeRange} class="time-select">
 							{#each data.timeRangeOptions as option}
 								<option value={option.value}>{option.label}</option>
-							{#/each}
+							{/each}
 						</select>
 						<div class="select-arrow">{UNICODE.triangleDown}</div>
 					</div>
