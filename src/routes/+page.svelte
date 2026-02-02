@@ -7,9 +7,23 @@
 	import AnimatedNumber from "$lib/components/ui/AnimatedNumber.svelte";
 	import Top5Card from "$lib/components/cards/Top5Card.svelte";
 
+	import type { PageData } from './$types';
+
+	export let data: PageData;
+
 	let username = "";
 	let isLoading = false;
 	let error = "";
+	let selectedTimeRange = "";
+
+	// Initialize selectedTimeRange
+	$: if (data.timeRangeOptions && data.timeRangeOptions.length > 0 && !selectedTimeRange) {
+		selectedTimeRange = data.timeRangeOptions[0].value;
+	}
+
+	// Get display year (e.g. "2025" from "2025年度")
+	$: displayYear = data.timeRangeOptions?.find(o => o.value === selectedTimeRange)?.label.replace(/年度|年.*/, '') || "2025";
+
 
 	// Server stats
 	let serverStats: any = null;
@@ -99,7 +113,7 @@
 			const data = await response.json();
 
 			if (data.valid) {
-				await goto(`/${data.userId}`);
+				await goto(`/${data.userId}?period=${selectedTimeRange}`);
 			} else {
 				error = data.error || "User not found on this server";
 			}
@@ -142,9 +156,19 @@
 				</div>
 
 				<h1 class="title font-display">
-					<span class="year">2025</span>
+					<span class="year">{displayYear}</span>
 					<span class="wrapped">Wrapped</span>
 				</h1>
+
+				<div class="time-selector-wrapper">
+					<select bind:value={selectedTimeRange} class="time-select">
+						{#each data.timeRangeOptions as option}
+							<option value={option.value}>{option.label}</option>
+						{/each}
+					</select>
+					<div class="select-arrow">{UNICODE.triangleDown}</div>
+				</div>
+
 				<p class="subtitle">
 					Enter your username to see your personal year
 				</p>
@@ -1114,5 +1138,52 @@
 	.back-btn:hover {
 		background: rgba(255, 255, 255, 0.05);
 		color: white;
+	}
+
+	/* Time Selector */
+	.time-selector-wrapper {
+		margin-top: 1rem;
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		pointer-events: auto;
+		z-index: 20;
+	}
+
+	.time-select {
+		appearance: none;
+		-webkit-appearance: none;
+		background: rgba(255, 255, 255, 0.1);
+		border: 1px solid rgba(255, 255, 255, 0.2);
+		border-radius: 100px;
+		color: rgba(255, 255, 255, 0.8);
+		font-family: "JetBrains Mono", monospace;
+		font-size: 0.875rem;
+		padding: 0.5rem 2.5rem 0.5rem 1.25rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		outline: none;
+		text-align: center;
+	}
+
+	.time-select:hover {
+		background: rgba(255, 255, 255, 0.15);
+		border-color: rgba(255, 255, 255, 0.4);
+		color: white;
+	}
+
+	.time-select option {
+		background: #1a1a1a;
+		color: white;
+	}
+
+	.select-arrow {
+		position: absolute;
+		right: 1rem;
+		top: 50%;
+		transform: translateY(-50%);
+		pointer-events: none;
+		font-size: 0.6rem;
+		color: rgba(255, 255, 255, 0.5);
 	}
 </style>

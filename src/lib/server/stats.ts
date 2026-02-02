@@ -189,6 +189,32 @@ function matchesTimeRange(dateStr: string, range: TimeRange): boolean {
 }
 
 /**
+ * Generate available time range options based on current date
+ */
+export function getAvailableTimeRanges(): { value: string; label: string }[] {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-12
+
+    const options: { value: string; label: string }[] = [];
+
+    // Add previous year
+    options.push({ value: String(currentYear - 1), label: `${currentYear - 1}年度` });
+
+    // Add months of current year (up to current month)
+    for (let month = 1; month <= currentMonth; month++) {
+        const monthStr = month < 10 ? '0' + month : String(month);
+        const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+        options.push({
+            value: `${currentYear}-${monthStr}`,
+            label: `${currentYear}年${monthNames[month - 1]}`
+        });
+    }
+
+    return options;
+}
+
+/**
  * Calculate how many days back we need to fetch to cover the requested time range
  */
 function calculateLookbackDays(range: TimeRange): number {

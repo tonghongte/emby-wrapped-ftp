@@ -259,9 +259,17 @@
 		color: rgba(255, 255, 255, 0.5);
 	}
 
-	/* Hide selector when minimized */
-	.year-lockup.minimized .time-selector-wrapper {
+	/* Hide selector when minimized - REMOVED to keep it accessible */
+	/* .year-lockup.minimized .time-selector-wrapper {
 		display: none;
+	} */
+
+	/* Ensure it stays interactive even when parent is minimized/moved */
+	.year-lockup.minimized .time-selector-wrapper {
+		pointer-events: auto;
+		/* Optional: adjust scale if it gets too small */
+		transform: scale(1.2); 
+		margin-top: 2rem;
 	}
 
 	/* Bridge */
