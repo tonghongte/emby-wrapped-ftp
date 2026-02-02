@@ -6,6 +6,7 @@
 	import ProgressDots from "$lib/components/ui/ProgressDots.svelte";
 	import AnimatedNumber from "$lib/components/ui/AnimatedNumber.svelte";
 	import Top5Card from "$lib/components/cards/Top5Card.svelte";
+    import MusicSummaryCard from "$lib/components/cards/MusicSummaryCard.svelte";
 
 	import type { PageData } from './$types';
 
@@ -144,7 +145,7 @@
 		: { days: 0, hours: 0, minutes: 0, formatted: "" };
 
 	// Card count
-	const SERVER_CARD_COUNT = 6;
+	const SERVER_CARD_COUNT = 7;
 </script>
 
 <svelte:head>
@@ -402,8 +403,22 @@
 			/>
 		{/if}
 
-		<!-- Card 5: CTA -->
-		{#if currentIndex === 5}
+		<!-- Card 5: Music Summary (if exists) -->
+        {#if currentIndex === 5}
+            {#if serverStats && serverStats.music && serverStats.music.totalMinutes > 0}
+			    <MusicSummaryCard music={serverStats.music} />
+            {:else}
+                <!-- Fallback if no music stats -->
+                <div class="card-base">
+                    <div class="card-content">
+                        <p>No music data for this period</p>
+                    </div>
+                </div>
+            {/if}
+		{/if}
+
+		<!-- Card 6: CTA -->
+		{#if currentIndex === 6}
 			<div class="card-base visible">
 				<div class="bg-particles">
 					{#each Array(6) as _, i}

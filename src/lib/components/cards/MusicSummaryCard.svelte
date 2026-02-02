@@ -13,7 +13,9 @@
 
 	$: hours = Math.round(music.totalMinutes / 60);
 	$: topArtist = music.topArtists[0];
-	$: otherArtists = music.topArtists.slice(1, 5);
+    // Show top 3 tracks if available, fallback to other artists if needed
+	$: topTracks = music.topTracks?.slice(0, 3) || [];
+	$: otherArtists = music.topArtists.slice(1, 4); // Show top 2-4 artists
 </script>
 
 <div class="card-base" class:visible id="music-summary-card">
@@ -52,7 +54,20 @@
 				</div>
 			</div>
 
-			{#if otherArtists.length > 0}
+            <!-- Top Songs Section -->
+			{#if topTracks.length > 0}
+				<div class="other-artists">
+                    <span class="section-label" style="align-self: center; margin-bottom: 0.25rem;">Top Songs</span>
+					{#each topTracks as track, i}
+						<div class="artist-item">
+							<span class="rank">#{i + 1}</span>
+							<span class="name">{track.name}</span>
+                            <span class="time" style="opacity: 0.7;">{track.artist}</span>
+							<span class="time">{track.count} plays</span>
+						</div>
+					{/each}
+				</div>
+            {:else if otherArtists.length > 0}
 				<div class="other-artists">
 					{#each otherArtists as artist, i}
 						<div class="artist-item">

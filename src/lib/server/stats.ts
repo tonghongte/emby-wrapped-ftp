@@ -71,6 +71,7 @@ export interface MusicStats {
     trackCount: number;
     topArtists: { name: string; minutes: number; count: number }[];
     topAlbums: { name: string; artist: string; minutes: number }[];
+    topTracks: { name: string; artist: string; minutes: number; count: number }[];
 }
 
 export interface FullMusicStats {
@@ -211,7 +212,8 @@ export function getAvailableTimeRanges(): { value: string; label: string }[] {
         });
     }
 
-    return options;
+    // Reverse to show newest first
+    return options.reverse();
 }
 
 /**
@@ -528,17 +530,27 @@ export async function aggregateUserStats(userId: string, username: string, timeR
 
         // Aggregate by artist (extracted from item name patterns)
         const artistMinutes = new Map<string, { minutes: number; count: number }>();
+        const trackStats = new Map<string, { name: string; artist: string; minutes: number; count: number }>();
 
         for (const track of audioActivity) {
             // Try to extract artist from "Artist - Song" format
             const parts = track.item_name.split(' - ');
             const artist = parts.length > 1 ? parts[0] : 'Unknown Artist';
+            const trackName = parts.length > 1 ? parts.slice(1).join(' - ') : track.item_name;
             const minutes = parseInt(track.duration || '0', 10) / 60;
 
-            const existing = artistMinutes.get(artist) || { minutes: 0, count: 0 };
-            existing.minutes += minutes;
-            existing.count += 1;
-            artistMinutes.set(artist, existing);
+            // Artist stats
+            const existingArtist = artistMinutes.get(artist) || { minutes: 0, count: 0 };
+            existingArtist.minutes += minutes;
+            existingArtist.count += 1;
+            artistMinutes.set(artist, existingArtist);
+
+            // Track stats
+            const trackKey = `${artist}|||${trackName}`;
+            const existingTrack = trackStats.get(trackKey) || { name: trackName, artist, minutes: 0, count: 0 };
+            existingTrack.minutes += minutes;
+            existingTrack.count += 1;
+            trackStats.set(trackKey, existingTrack);
         }
 
         const topArtists = [...artistMinutes.entries()]
@@ -546,11 +558,17 @@ export async function aggregateUserStats(userId: string, username: string, timeR
             .slice(0, 5)
             .map(([name, stats]) => ({ name, minutes: Math.round(stats.minutes), count: stats.count }));
 
+        const topTracks = [...trackStats.values()]
+            .sort((a, b) => b.count - a.count) // Sort tracks by play count usually makes more sense for "top songs"
+            .slice(0, 5)
+            .map(t => ({ ...t, minutes: Math.round(t.minutes) }));
+
         musicStats = {
             totalMinutes: musicMinutes,
             trackCount: audioActivity.length,
             topArtists,
-            topAlbums: [] // Would need more complex parsing
+            topAlbums: [], // Would need more complex parsing
+            topTracks
         };
     }
 

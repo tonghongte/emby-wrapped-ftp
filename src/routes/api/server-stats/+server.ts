@@ -3,7 +3,7 @@ import { emby, type EmbyItem } from '$lib/server/emby';
 import { tmdb } from '$lib/server/tmdb';
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
-import { parseTimeRange, timeRangeToString, calculateLookbackDays, matchesTimeRange, type TopItem } from '$lib/server/stats';
+import { parseTimeRange, timeRangeToString, calculateLookbackDays, matchesTimeRange, type TopItem, type MusicStats } from '$lib/server/stats';
 
 export interface ServerStats {
     totalUsers: number;
@@ -14,6 +14,7 @@ export interface ServerStats {
     monthlyMinutes: number[];
     topShows: TopItem[];
     topMovies: TopItem[];
+    music: MusicStats;
     year: number;
     timeRangeLabel: string;
 }
@@ -122,6 +123,12 @@ export const GET: RequestHandler = async ({ url }) => {
         const monthlyMinutes = new Array(12).fill(0);
         const showMap = new Map<string, { name: string; minutes: number; count: number }>();
         const movieMap = new Map<string, { name: string; minutes: number; count: number }>();
+        
+        // Music aggregation
+        let musicTotalMinutes = 0;
+        let musicTrackCount = 0;
+        const artistMap = new Map<string, { minutes: number; count: number }>();
+        const trackMap = new Map<string, { name: string; artist: string; minutes: number; count: number }>();
 
         for (const { activity } of userActivities) {
             for (const item of activity) {
@@ -134,16 +141,32 @@ export const GET: RequestHandler = async ({ url }) => {
                     continue;
                 }
 
-                // If no filter user, we still use itemDetails if available to get better metadata, but don't strictly require it?
-                // Actually, to be safe and consistent with "apply FILTER_USER_ID", if it's set, we filter.
-                // If it's NOT set, we count everything.
-                
                 const durationSeconds = parseInt(item.duration, 10) || 0;
                 const minutes = Math.round(durationSeconds / 60);
 
-                // Skip music
+                // Music
                 const itemType = item.item_type?.toLowerCase();
                 if (itemType === 'audio' || itemType === 'musicalbum') {
+                    musicTotalMinutes += minutes;
+                    musicTrackCount++;
+
+                    // Extract artist
+                    const parts = item.item_name.split(' - ');
+                    const artist = parts.length > 1 ? parts[0].trim() : 'Unknown Artist';
+                    const trackName = parts.length > 1 ? parts.slice(1).join(' - ') : item.item_name;
+
+                    // Artist stats
+                    const existingArtist = artistMap.get(artist) || { minutes: 0, count: 0 };
+                    existingArtist.minutes += minutes;
+                    existingArtist.count += 1;
+                    artistMap.set(artist, existingArtist);
+
+                    // Track stats
+                    const trackKey = `${artist}|||${trackName}`;
+                    const existingTrack = trackMap.get(trackKey) || { name: trackName, artist, minutes: 0, count: 0 };
+                    existingTrack.minutes += minutes;
+                    existingTrack.count += 1;
+                    trackMap.set(trackKey, existingTrack);
                     continue;
                 }
 
@@ -212,6 +235,21 @@ export const GET: RequestHandler = async ({ url }) => {
             };
         }));
 
+        // Finalize music stats
+        const musicStats: MusicStats = {
+            totalMinutes: musicTotalMinutes,
+            trackCount: musicTrackCount,
+            topArtists: [...artistMap.entries()]
+                .sort((a, b) => b[1].minutes - a[1].minutes)
+                .slice(0, 5)
+                .map(([name, stats]) => ({ name, minutes: Math.round(stats.minutes), count: stats.count })),
+            topAlbums: [],
+            topTracks: [...trackMap.values()]
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 5)
+                .map(t => ({ ...t, minutes: Math.round(t.minutes) }))
+        };
+
         const stats: ServerStats = {
             totalUsers: users.length,
             totalMinutes,
@@ -221,6 +259,7 @@ export const GET: RequestHandler = async ({ url }) => {
             monthlyMinutes,
             topShows,
             topMovies,
+            music: musicStats,
             year: timeRange.year,
             timeRangeLabel: periodParam
         };
