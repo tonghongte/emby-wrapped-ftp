@@ -202,8 +202,8 @@ export function getAvailableTimeRanges(): { value: string; label: string }[] {
     // Add previous year
     options.push({ value: String(currentYear - 1), label: `${currentYear - 1}年度` });
 
-    // Add months of current year (up to current month)
-    for (let month = 1; month <= currentMonth; month++) {
+    // Add months of current year (strictly before current month)
+    for (let month = 1; month < currentMonth; month++) {
         const monthStr = month < 10 ? '0' + month : String(month);
         const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
         options.push({
@@ -535,8 +535,8 @@ export async function aggregateUserStats(userId: string, username: string, timeR
         for (const track of audioActivity) {
             // Try to extract artist from "Artist - Song" format
             const parts = track.item_name.split(' - ');
-            const artist = parts.length > 1 ? parts[0] : 'Unknown Artist';
-            const trackName = parts.length > 1 ? parts.slice(1).join(' - ') : track.item_name;
+            const artist = parts.length > 1 ? parts[0].trim() : 'Unknown Artist';
+            const trackName = parts.length > 1 ? parts.slice(1).join(' - ').trim() : track.item_name;
             const minutes = parseInt(track.duration || '0', 10) / 60;
 
             // Artist stats
