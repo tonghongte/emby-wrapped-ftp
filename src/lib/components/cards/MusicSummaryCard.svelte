@@ -14,6 +14,7 @@
 		setTimeout(() => (visible = true), 100);
 	});
 
+	$: hours = Math.round(music.totalMinutes / 60);
 	$: topArtist = music.topArtists?.[0];
     // Show top 5 tracks and top 2-5 artists side by side
 	$: topTracks = music.topTracks?.slice(0, 5) || [];
