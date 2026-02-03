@@ -24,9 +24,6 @@ const cachedStatsMap = new Map<string, { stats: ServerStats; time: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export const GET: RequestHandler = async ({ url }) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server-stats/+server.ts:24',message:'GET server-stats entry',data:{period: url.searchParams.get('period')},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{});
-    // #endregion
     
     try {
         const periodParam = url.searchParams.get('period') || String(new Date().getFullYear() - 1);
@@ -38,9 +35,6 @@ export const GET: RequestHandler = async ({ url }) => {
         const cached = cachedStatsMap.get(cacheKey);
         if (cached && Date.now() - cached.time < CACHE_TTL) {
             console.log(`Returning cached server stats for ${cacheKey}`);
-            // #region agent log
-            fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server-stats/+server.ts:39',message:'Returning cached server stats',data:{cacheKey},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{});
-            // #endregion
             return json(cached.stats);
         }
 
@@ -50,11 +44,6 @@ export const GET: RequestHandler = async ({ url }) => {
         const users = await emby.getUsers();
         const daysToFetch = calculateLookbackDays(timeRange);
         
-        // Log environment variable for debugging
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server-stats/+server.ts:50',message:'Checking FILTER_USER_ID',data:{FILTER_USER_ID: env.FILTER_USER_ID, hasFilter: !!env.FILTER_USER_ID},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{});
-        // #endregion
-
         const filterUserId = env.FILTER_USER_ID;
 
         // Collect all unique item IDs from all users

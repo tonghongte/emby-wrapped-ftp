@@ -8,9 +8,6 @@
 	let visible = false;
 
 	onMount(() => {
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MusicSummaryCard.svelte:10',message:'Music card mounted',data:{musicKeys: Object.keys(music), topArtistsLen: music.topArtists?.length, topTracksLen: music.topTracks?.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
-        // #endregion
 		setTimeout(() => (visible = true), 100);
 	});
 

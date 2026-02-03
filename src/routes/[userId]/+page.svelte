@@ -21,18 +21,10 @@
 	export let data: PageData;
 
 	$: ({ stats, userImageUrl, serverName, currentTimeRange, timeRangeOptions } = data);
-    // #region agent log
-    $: if(data) {
-        fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'[userId]/+page.svelte:23',message:'Data updated in component',data:{timeRange: data.currentTimeRange, statsYear: data.stats?.year, statsTimeRangeLabel: data.stats?.timeRangeLabel},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
-    }
-    // #endregion
 
 	function handleTimeRangeChange(event: Event) {
 		const select = event.target as HTMLSelectElement;
 		const newPeriod = select.value;
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'[userId]/+page.svelte:27',message:'Time range changed',data:{newPeriod},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
-        // #endregion
 		goto(`?period=${newPeriod}`, { replaceState: true });
 	}
 
@@ -180,9 +172,6 @@
 
 		// 13. Music summary (if we have music data)
 		if (stats.music && stats.music.totalMinutes > 0) {
-            // #region agent log
-            fetch('http://127.0.0.1:7244/ingest/f6b74b87-f707-4f3b-8031-077d6c5d0a25',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'[userId]/+page.svelte:182',message:'Adding music card',data:{music: stats.music},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
-            // #endregion
 			cards.push({
 				type: "music",
 				component: MusicSummaryCard,
