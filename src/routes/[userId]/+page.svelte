@@ -54,11 +54,13 @@
 		});
 
 		// 2. Total time
-		cards.push({
-			type: "total_time",
-			component: TotalTimeCard,
-			props: { stats },
-		});
+        if (stats.totalMinutes > 0) {
+            cards.push({
+                type: "total_time",
+                component: TotalTimeCard,
+                props: { stats },
+            });
+        }
 
 		// 3. Top show (if exists)
 		if (stats.topShows.length > 0) {
@@ -125,11 +127,13 @@
 		}
 
 		// 9. Viewing Personality - NEW!
-		cards.push({
-			type: "personality",
-			component: PersonalityCard,
-			props: { stats },
-		});
+        if (stats.totalMinutes > 0) {
+            cards.push({
+                type: "personality",
+                component: PersonalityCard,
+                props: { stats },
+            });
+        }
 
 		// 10. Day of week patterns
 		if (stats.heatmap.days.some((d) => d > 0)) {

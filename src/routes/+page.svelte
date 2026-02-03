@@ -77,24 +77,25 @@
 	}
 
 	function startCardAnimation(cardIndex: number) {
+        const cardType = visibleCards[cardIndex];
 		const timelines: Record<
-			number,
+			string,
 			{ setter: (v: number) => void; delays: number[] }
 		> = {
-			0: {
+			'intro': {
 				setter: (v) => (introPhase = v),
 				delays: [0, 600, 1200, 2000],
 			},
-			1: { setter: (v) => (timePhase = v), delays: [0, 500, 1500, 2200] },
-			2: {
+			'time': { setter: (v) => (timePhase = v), delays: [0, 500, 1500, 2200] },
+			'content': {
 				setter: (v) => (contentPhase = v),
 				delays: [0, 500, 1200, 1900],
 			},
 			// Cards 3 and 4 (Top5Card) handle their own animations internally
-			5: { setter: (v) => (ctaPhase = v), delays: [0, 500, 1000, 1600] },
+			'cta': { setter: (v) => (ctaPhase = v), delays: [0, 500, 1000, 1600] },
 		};
 
-		const config = timelines[cardIndex];
+		const config = timelines[cardType];
 		if (config) {
 			config.delays.forEach((delay, i) => {
 				setTimeout(() => config.setter(i + 1), delay);
@@ -145,7 +146,18 @@
 		: { days: 0, hours: 0, minutes: 0, formatted: "" };
 
 	// Card count
-	const SERVER_CARD_COUNT = 7;
+	$: visibleCards = (() => {
+        const cards = ['intro'];
+        if (serverStats) {
+            cards.push('time');
+            cards.push('content');
+            if (serverStats.topShows?.length > 0) cards.push('top_shows');
+            if (serverStats.topMovies?.length > 0) cards.push('top_movies');
+            if (serverStats.music && serverStats.music.totalMinutes > 0) cards.push('music');
+        }
+        cards.push('cta');
+        return cards;
+    })();
 </script>
 
 <svelte:head>
@@ -227,12 +239,12 @@
 {:else}
 	<!-- Server Wrapped Cards -->
 	<CardStack
-		totalCards={SERVER_CARD_COUNT}
+		totalCards={visibleCards.length}
 		on:cardChange={handleCardChange}
 		let:currentIndex
 	>
 		<!-- Card 0: Intro -->
-		{#if currentIndex === 0}
+		{#if visibleCards[currentIndex] === 'intro'}
 			<div class="card-base">
 				<div class="card-content intro-card">
 					<div class="unicode-line" class:show={introPhase >= 1}>
@@ -274,7 +286,7 @@
 		{/if}
 
 		<!-- Card 1: Total Time -->
-		{#if currentIndex === 1 && serverStats}
+		{#if visibleCards[currentIndex] === 'time' && serverStats}
 			<div class="card-base">
 				<div class="bg-glow time"></div>
 				<div class="card-content time-card">
@@ -329,7 +341,7 @@
 		{/if}
 
 		<!-- Card 2: Content Count -->
-		{#if currentIndex === 2 && serverStats}
+		{#if visibleCards[currentIndex] === 'content' && serverStats}
 			<div class="card-base">
 				<div class="card-content content-card">
 					<p class="card-label" class:show={contentPhase >= 1}>
@@ -384,7 +396,7 @@
 		{/if}
 
 		<!-- Card 3: Top 5 Shows -->
-		{#if currentIndex === 3 && serverStats && serverStats.topShows?.length > 0}
+		{#if visibleCards[currentIndex] === 'top_shows' && serverStats}
 			<Top5Card
 				items={serverStats.topShows}
 				title="Community's Top Shows"
@@ -394,7 +406,7 @@
 		{/if}
 
 		<!-- Card 4: Top 5 Movies -->
-		{#if currentIndex === 4 && serverStats && serverStats.topMovies?.length > 0}
+		{#if visibleCards[currentIndex] === 'top_movies' && serverStats}
 			<Top5Card
 				items={serverStats.topMovies}
 				title="Community's Top Movies"
@@ -404,21 +416,12 @@
 		{/if}
 
 		<!-- Card 5: Music Summary (if exists) -->
-        {#if currentIndex === 5}
-            {#if serverStats && serverStats.music && serverStats.music.totalMinutes > 0}
-			    <MusicSummaryCard music={serverStats.music} />
-            {:else}
-                <!-- Fallback if no music stats -->
-                <div class="card-base">
-                    <div class="card-content">
-                        <p>No music data for this period</p>
-                    </div>
-                </div>
-            {/if}
+        {#if visibleCards[currentIndex] === 'music' && serverStats}
+			<MusicSummaryCard music={serverStats.music} />
 		{/if}
 
 		<!-- Card 6: CTA -->
-		{#if currentIndex === 6}
+		{#if visibleCards[currentIndex] === 'cta'}
 			<div class="card-base visible">
 				<div class="bg-particles">
 					{#each Array(6) as _, i}
@@ -460,7 +463,7 @@
 		{/if}
 
 		<ProgressDots
-			total={SERVER_CARD_COUNT}
+			total={visibleCards.length}
 			current={currentCardIndex}
 			slot="progress"
 		/>
