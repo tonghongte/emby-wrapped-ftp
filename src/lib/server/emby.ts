@@ -54,6 +54,10 @@ export interface EmbyItem {
     BackdropImageTags?: string[];
     SeriesId?: string;
     SeriesPrimaryImageTag?: string;
+    ArtistIds?: string[];
+    AlbumArtistIds?: string[];
+    AlbumId?: string;
+    AlbumPrimaryImageTag?: string;
 }
 
 class EmbyClient {

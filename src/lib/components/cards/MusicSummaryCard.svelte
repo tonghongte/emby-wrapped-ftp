@@ -38,7 +38,11 @@
 				<span class="section-label">Top Artist</span>
 				<div class="top-artist">
 					<div class="artist-icon">
-						<span>{topArtist.name.charAt(0).toUpperCase()}</span>
+						{#if topArtist.imageUrl}
+							<img src={topArtist.imageUrl} alt={topArtist.name} />
+						{:else}
+							<span>{topArtist.name.charAt(0).toUpperCase()}</span>
+						{/if}
 					</div>
 					<div class="artist-info">
 						<span class="artist-name">{topArtist.name}</span>
@@ -55,6 +59,13 @@
                             {#each otherArtists as artist, i}
                                 <div class="compact-item">
                                     <span class="rank">#{i + 2}</span>
+                                    <div class="item-thumb">
+                                        {#if artist.imageUrl}
+                                            <img src={artist.imageUrl} alt={artist.name} />
+                                        {:else}
+                                            <div class="thumb-placeholder">{artist.name.charAt(0)}</div>
+                                        {/if}
+                                    </div>
                                     <div class="info">
                                         <span class="name">{artist.name}</span>
                                         <span class="sub">{Math.round(artist.minutes)}m</span>
@@ -72,6 +83,13 @@
                             {#each topTracks as track, i}
                                 <div class="compact-item">
                                     <span class="rank">#{i + 1}</span>
+                                    <div class="item-thumb track">
+                                        {#if track.imageUrl}
+                                            <img src={track.imageUrl} alt={track.name} />
+                                        {:else}
+                                            <div class="thumb-placeholder">{track.name.charAt(0)}</div>
+                                        {/if}
+                                    </div>
                                     <div class="info">
                                         <span class="name">{track.name}</span>
                                         <span class="sub">{track.count}p · {track.artist}</span>
@@ -123,6 +141,35 @@
         color: #ec4899;
         width: 1.2rem;
         flex-shrink: 0;
+    }
+    .item-thumb {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        overflow: hidden;
+        flex-shrink: 0;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .item-thumb.track {
+        border-radius: 4px;
+    }
+    .item-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .thumb-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.6rem;
+        font-weight: bold;
+        color: rgba(255, 255, 255, 0.7);
+        background: linear-gradient(135deg, #8b5cf6, #ec4899);
+        text-transform: uppercase;
     }
     .compact-item .info {
         display: flex;
@@ -291,6 +338,13 @@
 		font-weight: 700;
 		color: white;
 		flex-shrink: 0;
+		overflow: hidden;
+	}
+
+	.artist-icon img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
 	}
 
 	.artist-info {

@@ -69,9 +69,9 @@ export interface BingeSession {
 export interface MusicStats {
     totalMinutes: number;
     trackCount: number;
-    topArtists: { name: string; minutes: number; count: number }[];
-    topAlbums: { name: string; artist: string; minutes: number }[];
-    topTracks: { name: string; artist: string; minutes: number; count: number }[];
+    topArtists: { name: string; minutes: number; count: number; imageUrl?: string }[];
+    topAlbums: { name: string; artist: string; minutes: number; imageUrl?: string }[];
+    topTracks: { name: string; artist: string; minutes: number; count: number; imageUrl?: string }[];
 }
 
 export interface FullMusicStats {
@@ -89,9 +89,9 @@ export interface FullMusicStats {
     totalPlays: number;
 
     // Top content
-    topArtists: { name: string; minutes: number; count: number; percentage: number }[];
-    topTracks: { name: string; artist: string; minutes: number; count: number }[];
-    topAlbums: { name: string; artist: string; minutes: number; count: number }[];
+    topArtists: { name: string; minutes: number; count: number; percentage: number; imageUrl?: string }[];
+    topTracks: { name: string; artist: string; minutes: number; count: number; imageUrl?: string }[];
+    topAlbums: { name: string; artist: string; minutes: number; count: number; imageUrl?: string }[];
 
     // Temporal patterns
     heatmap: HeatmapData;
@@ -529,8 +529,8 @@ export async function aggregateUserStats(userId: string, username: string, timeR
         const musicMinutes = Math.round(audioActivity.reduce((sum, a) => sum + parseInt(a.duration || '0', 10), 0) / 60);
 
         // Aggregate by artist (extracted from item name patterns)
-        const artistMinutes = new Map<string, { minutes: number; count: number }>();
-        const trackStats = new Map<string, { name: string; artist: string; minutes: number; count: number }>();
+        const artistMinutes = new Map<string, { minutes: number; count: number; trackId?: string }>();
+        const trackStats = new Map<string, { name: string; artist: string; minutes: number; count: number; trackId: string }>();
 
         for (const track of audioActivity) {
             // Try to extract artist from "Artist - Song" format
@@ -538,30 +538,70 @@ export async function aggregateUserStats(userId: string, username: string, timeR
             const artist = parts.length > 1 ? parts[0].trim() : 'Unknown Artist';
             const trackName = parts.length > 1 ? parts.slice(1).join(' - ').trim() : track.item_name;
             const minutes = parseInt(track.duration || '0', 10) / 60;
+            const trackId = String(track.item_id);
 
             // Artist stats
-            const existingArtist = artistMinutes.get(artist) || { minutes: 0, count: 0 };
+            const existingArtist = artistMinutes.get(artist) || { minutes: 0, count: 0, trackId };
             existingArtist.minutes += minutes;
             existingArtist.count += 1;
+            if (!existingArtist.trackId) existingArtist.trackId = trackId;
             artistMinutes.set(artist, existingArtist);
 
             // Track stats
             const trackKey = `${artist}|||${trackName}`;
-            const existingTrack = trackStats.get(trackKey) || { name: trackName, artist, minutes: 0, count: 0 };
+            const existingTrack = trackStats.get(trackKey) || { name: trackName, artist, minutes: 0, count: 0, trackId };
             existingTrack.minutes += minutes;
             existingTrack.count += 1;
             trackStats.set(trackKey, existingTrack);
         }
 
-        const topArtists = [...artistMinutes.entries()]
+        // Fetch details for top items to get images and artist IDs
+        const topArtistsData = [...artistMinutes.entries()]
             .sort((a, b) => b[1].minutes - a[1].minutes)
-            .slice(0, 5)
-            .map(([name, stats]) => ({ name, minutes: Math.round(stats.minutes), count: stats.count }));
+            .slice(0, 5);
+        
+        const topTracksData = [...trackStats.values()]
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
 
-        const topTracks = [...trackStats.values()]
-            .sort((a, b) => b.count - a.count) // Sort tracks by play count usually makes more sense for "top songs"
-            .slice(0, 5)
-            .map(t => ({ ...t, minutes: Math.round(t.minutes) }));
+        const musicItemIds = new Set<string>();
+        topArtistsData.forEach(([_, stats]) => { if (stats.trackId) musicItemIds.add(stats.trackId); });
+        topTracksData.forEach(stats => musicItemIds.add(stats.trackId));
+
+        const musicItemDetails = new Map<string, EmbyItem>();
+        try {
+            if (musicItemIds.size > 0) {
+                const items = await emby.getItems(filterUserId, [...musicItemIds]);
+                items.forEach(item => musicItemDetails.set(item.Id, item));
+            }
+        } catch (e) {
+            console.warn('Failed to fetch music item details:', e);
+        }
+
+        const topArtists = topArtistsData.map(([name, stats]) => {
+            const trackDetail = stats.trackId ? musicItemDetails.get(stats.trackId) : null;
+            let imageUrl = '';
+            if (trackDetail?.ArtistIds?.[0]) {
+                imageUrl = emby.getImageUrl(trackDetail.ArtistIds[0], 'Primary', 200);
+            } else if (stats.trackId) {
+                // Fallback to track image if artist image not found
+                imageUrl = emby.getImageUrl(stats.trackId, 'Primary', 200);
+            }
+            return { 
+                name, 
+                minutes: Math.round(stats.minutes), 
+                count: stats.count,
+                imageUrl
+            };
+        });
+
+        const topTracks = topTracksData.map(t => {
+            return { 
+                ...t, 
+                minutes: Math.round(t.minutes),
+                imageUrl: emby.getImageUrl(t.trackId, 'Primary', 200)
+            };
+        });
 
         musicStats = {
             totalMinutes: musicMinutes,
@@ -647,52 +687,83 @@ export async function aggregateMusicStats(userId: string, username: string, time
     const totalDays = Math.round(totalMinutes / 1440 * 100) / 100;
 
     // Track unique tracks and aggregate stats
-    const trackStats = new Map<string, { name: string; artist: string; minutes: number; count: number }>();
-    const artistStats = new Map<string, { minutes: number; count: number }>();
-    const albumStats = new Map<string, { name: string; artist: string; minutes: number; count: number }>();
+    const trackStats = new Map<string, { name: string; artist: string; minutes: number; count: number; trackId: string }>();
+    const artistStats = new Map<string, { minutes: number; count: number; trackId?: string }>();
+    const albumStats = new Map<string, { name: string; artist: string; minutes: number; count: number; trackId: string }>();
 
     for (const track of audioActivity) {
         const parts = track.item_name.split(' - ');
         const artist = parts.length > 1 ? parts[0].trim() : 'Unknown Artist';
         const trackName = parts.length > 1 ? parts.slice(1).join(' - ').trim() : track.item_name;
         const minutes = parseInt(track.duration || '0', 10) / 60;
+        const trackId = String(track.item_id);
         const trackKey = `${artist}|||${trackName}`;
 
         // Track stats
-        const existingTrack = trackStats.get(trackKey) || { name: trackName, artist, minutes: 0, count: 0 };
+        const existingTrack = trackStats.get(trackKey) || { name: trackName, artist, minutes: 0, count: 0, trackId };
         existingTrack.minutes += minutes;
         existingTrack.count += 1;
         trackStats.set(trackKey, existingTrack);
 
         // Artist stats
-        const existingArtist = artistStats.get(artist) || { minutes: 0, count: 0 };
+        const existingArtist = artistStats.get(artist) || { minutes: 0, count: 0, trackId };
         existingArtist.minutes += minutes;
         existingArtist.count += 1;
+        if (!existingArtist.trackId) existingArtist.trackId = trackId;
         artistStats.set(artist, existingArtist);
+    }
+
+    // Fetch details for top items to get images and artist IDs
+    const topArtistsData = [...artistStats.entries()]
+        .sort((a, b) => b[1].minutes - a[1].minutes)
+        .slice(0, 10);
+    
+    const topTracksData = [...trackStats.values()]
+        .sort((a, b) => b.minutes - a.minutes)
+        .slice(0, 10);
+
+    const musicItemIds = new Set<string>();
+    topArtistsData.forEach(([_, stats]) => { if (stats.trackId) musicItemIds.add(stats.trackId); });
+    topTracksData.forEach(stats => musicItemIds.add(stats.trackId));
+
+    const musicItemDetails = new Map<string, EmbyItem>();
+    const filterUserId = env.FILTER_USER_ID || userId;
+    try {
+        if (musicItemIds.size > 0) {
+            const items = await emby.getItems(filterUserId, [...musicItemIds]);
+            items.forEach(item => musicItemDetails.set(item.Id, item));
+        }
+    } catch (e) {
+        console.warn('Failed to fetch music item details:', e);
     }
 
     // Build top lists
     const totalArtistMinutes = [...artistStats.values()].reduce((sum, a) => sum + a.minutes, 0) || 1;
 
-    const topArtists = [...artistStats.entries()]
-        .sort((a, b) => b[1].minutes - a[1].minutes)
-        .slice(0, 10)
-        .map(([name, stats]) => ({
+    const topArtists = topArtistsData.map(([name, stats]) => {
+        const trackDetail = stats.trackId ? musicItemDetails.get(stats.trackId) : null;
+        let imageUrl = '';
+        if (trackDetail?.ArtistIds?.[0]) {
+            imageUrl = emby.getImageUrl(trackDetail.ArtistIds[0], 'Primary', 200);
+        } else if (stats.trackId) {
+            imageUrl = emby.getImageUrl(stats.trackId, 'Primary', 200);
+        }
+        return {
             name,
             minutes: Math.round(stats.minutes),
             count: stats.count,
-            percentage: Math.round((stats.minutes / totalArtistMinutes) * 100)
-        }));
+            percentage: Math.round((stats.minutes / totalArtistMinutes) * 100),
+            imageUrl
+        };
+    });
 
-    const topTracks = [...trackStats.values()]
-        .sort((a, b) => b.minutes - a.minutes)
-        .slice(0, 10)
-        .map(t => ({
-            name: t.name,
-            artist: t.artist,
-            minutes: Math.round(t.minutes),
-            count: t.count
-        }));
+    const topTracks = topTracksData.map(t => ({
+        name: t.name,
+        artist: t.artist,
+        minutes: Math.round(t.minutes),
+        count: t.count,
+        imageUrl: emby.getImageUrl(t.trackId, 'Primary', 200)
+    }));
 
     const topAlbums = [...albumStats.values()]
         .sort((a, b) => b.minutes - a.minutes)
