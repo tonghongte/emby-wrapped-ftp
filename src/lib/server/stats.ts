@@ -591,7 +591,7 @@ export async function aggregateUserStats(userId: string, username: string, timeR
                 name, 
                 minutes: Math.round(stats.minutes), 
                 count: stats.count,
-                imageUrl
+                imageUrl: imageUrl ? imageUrl.replace('maxWidth=200', 'maxWidth=400') : ''
             };
         });
 
@@ -599,7 +599,7 @@ export async function aggregateUserStats(userId: string, username: string, timeR
             return { 
                 ...t, 
                 minutes: Math.round(t.minutes),
-                imageUrl: emby.getImageUrl(t.trackId, 'Primary', 200)
+                imageUrl: emby.getImageUrl(t.trackId, 'Primary', 400)
             };
         });
 
@@ -753,7 +753,7 @@ export async function aggregateMusicStats(userId: string, username: string, time
             minutes: Math.round(stats.minutes),
             count: stats.count,
             percentage: Math.round((stats.minutes / totalArtistMinutes) * 100),
-            imageUrl
+            imageUrl: imageUrl ? imageUrl.replace('maxWidth=200', 'maxWidth=400') : ''
         };
     });
 
@@ -762,7 +762,7 @@ export async function aggregateMusicStats(userId: string, username: string, time
         artist: t.artist,
         minutes: Math.round(t.minutes),
         count: t.count,
-        imageUrl: emby.getImageUrl(t.trackId, 'Primary', 200)
+        imageUrl: emby.getImageUrl(t.trackId, 'Primary', 400)
     }));
 
     const topAlbums = [...albumStats.values()]

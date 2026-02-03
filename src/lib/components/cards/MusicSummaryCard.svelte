@@ -39,7 +39,7 @@
 				<div class="top-artist">
 					<div class="artist-icon">
 						{#if topArtist.imageUrl}
-							<img src={topArtist.imageUrl} alt={topArtist.name} />
+							<img src={`/api/proxy-image?url=${encodeURIComponent(topArtist.imageUrl)}`} alt={topArtist.name} />
 						{:else}
 							<span>{topArtist.name.charAt(0).toUpperCase()}</span>
 						{/if}
@@ -61,7 +61,7 @@
                                     <span class="rank">#{i + 2}</span>
                                     <div class="item-thumb">
                                         {#if artist.imageUrl}
-                                            <img src={artist.imageUrl} alt={artist.name} />
+                                            <img src={`/api/proxy-image?url=${encodeURIComponent(artist.imageUrl)}`} alt={artist.name} />
                                         {:else}
                                             <div class="thumb-placeholder">{artist.name.charAt(0)}</div>
                                         {/if}
@@ -85,7 +85,7 @@
                                     <span class="rank">#{i + 1}</span>
                                     <div class="item-thumb track">
                                         {#if track.imageUrl}
-                                            <img src={track.imageUrl} alt={track.name} />
+                                            <img src={`/api/proxy-image?url=${encodeURIComponent(track.imageUrl)}`} alt={track.name} />
                                         {:else}
                                             <div class="thumb-placeholder">{track.name.charAt(0)}</div>
                                         {/if}
@@ -133,7 +133,7 @@
         border: 1px solid rgba(255, 255, 255, 0.05);
         border-radius: 0.5rem;
         font-size: 0.8rem;
-        height: 42px; /* Fixed height for consistency */
+        height: 54px; /* Increased height for larger thumbnails */
     }
     .compact-item .rank {
         font-family: "JetBrains Mono", monospace;
@@ -143,8 +143,8 @@
         flex-shrink: 0;
     }
     .item-thumb {
-        width: 28px;
-        height: 28px;
+        width: 40px; /* Increased from 28px */
+        height: 40px; /* Increased from 28px */
         border-radius: 50%;
         overflow: hidden;
         flex-shrink: 0;
@@ -327,14 +327,14 @@
 	}
 
 	.artist-icon {
-		width: 40px;
-		height: 40px;
+		width: 64px; /* Increased from 40px */
+		height: 64px; /* Increased from 40px */
 		border-radius: 50%;
 		background: linear-gradient(135deg, #8b5cf6, #ec4899);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 1rem;
+		font-size: 1.5rem; /* Larger font for fallback */
 		font-weight: 700;
 		color: white;
 		flex-shrink: 0;
