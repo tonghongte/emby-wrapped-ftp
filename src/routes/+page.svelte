@@ -466,6 +466,8 @@
 			total={visibleCards.length}
 			current={currentCardIndex}
 			slot="progress"
+			let:goToCard
+			onSelect={goToCard}
 		/>
 	</CardStack>
 {/if}

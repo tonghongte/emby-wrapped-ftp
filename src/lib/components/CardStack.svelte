@@ -136,7 +136,18 @@
 	<div class="nav-overlay">
 		<!-- Progress dots -->
 		<div class="progress-container">
-			<ProgressDots total={totalCards} current={currentCard} />
+			<slot
+				name="progress"
+				{goToCard}
+				current={currentCard}
+				total={totalCards}
+			>
+				<ProgressDots
+					total={totalCards}
+					current={currentCard}
+					onSelect={(index) => goToCard(index)}
+				/>
+			</slot>
 		</div>
 
 		<!-- Navigation hints -->

@@ -1,6 +1,7 @@
 <script lang="ts">
 	export let total: number;
 	export let current: number;
+	export let onSelect: ((index: number) => void) | undefined = undefined;
 </script>
 
 <div class="progress-dots">
@@ -9,7 +10,7 @@
 			class="dot"
 			class:active={i === current}
 			class:past={i < current}
-			on:click={() => {}}
+			on:click|stopPropagation={() => onSelect?.(i)}
 			aria-label="Go to card {i + 1}"
 		>
 			<span class="dot-inner"></span>
