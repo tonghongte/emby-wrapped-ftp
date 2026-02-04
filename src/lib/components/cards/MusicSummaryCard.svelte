@@ -16,6 +16,13 @@
     // Show top 5 tracks and top 2-5 artists side by side
 	$: topTracks = music.topTracks?.slice(0, 5) || [];
 	$: otherArtists = (music.topArtists || []).slice(1, 6); // Show top 2-6 artists (5 items)
+
+	let imageErrors = new Set<string>();
+
+	function handleImageError(key: string) {
+		imageErrors.add(key);
+		imageErrors = imageErrors; // Trigger reactivity
+	}
 </script>
 
 <div class="card-base" class:visible id="music-summary-card">
@@ -38,8 +45,12 @@
 				<span class="section-label">Top Artist</span>
 				<div class="top-artist">
 					<div class="artist-icon">
-						{#if topArtist.imageUrl}
-							<img src={`/api/proxy-image?url=${encodeURIComponent(topArtist.imageUrl)}`} alt={topArtist.name} />
+						{#if topArtist.imageUrl && !imageErrors.has('top-artist')}
+							<img 
+								src={`/api/proxy-image?url=${encodeURIComponent(topArtist.imageUrl)}`} 
+								alt={topArtist.name} 
+								on:error={() => handleImageError('top-artist')}
+							/>
 						{:else}
 							<span>{topArtist.name.charAt(0).toUpperCase()}</span>
 						{/if}
@@ -60,8 +71,12 @@
                                 <div class="compact-item">
                                     <span class="rank">#{i + 2}</span>
                                     <div class="item-thumb">
-                                        {#if artist.imageUrl}
-                                            <img src={`/api/proxy-image?url=${encodeURIComponent(artist.imageUrl)}`} alt={artist.name} />
+                                        {#if artist.imageUrl && !imageErrors.has(`artist-${i}`)}
+                                            <img 
+                                                src={`/api/proxy-image?url=${encodeURIComponent(artist.imageUrl)}`} 
+                                                alt={artist.name} 
+                                                on:error={() => handleImageError(`artist-${i}`)}
+                                            />
                                         {:else}
                                             <div class="thumb-placeholder">{artist.name.charAt(0)}</div>
                                         {/if}
@@ -84,8 +99,12 @@
                                 <div class="compact-item">
                                     <span class="rank">#{i + 1}</span>
                                     <div class="item-thumb track">
-                                        {#if track.imageUrl}
-                                            <img src={`/api/proxy-image?url=${encodeURIComponent(track.imageUrl)}`} alt={track.name} />
+                                        {#if track.imageUrl && !imageErrors.has(`track-${i}`)}
+                                            <img 
+                                                src={`/api/proxy-image?url=${encodeURIComponent(track.imageUrl)}`} 
+                                                alt={track.name} 
+                                                on:error={() => handleImageError(`track-${i}`)}
+                                            />
                                         {:else}
                                             <div class="thumb-placeholder">{track.name.charAt(0)}</div>
                                         {/if}
