@@ -156,6 +156,20 @@ class EmbyClient {
     }
 
     /**
+     * Get API base URL
+     */
+    getApiBaseUrl(): string {
+        return this.baseUrl;
+    }
+
+    /**
+     * Get API key
+     */
+    getApiKey(): string {
+        return this.apiKey;
+    }
+
+    /**
      * Get user profile image URL
      */
     getUserImageUrl(userId: string, maxWidth: number = 200): string {

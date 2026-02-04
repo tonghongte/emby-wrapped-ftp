@@ -582,10 +582,10 @@ export async function aggregateUserStats(userId: string, username: string, timeR
             const trackDetail = stats.trackId ? musicItemDetails.get(stats.trackId) : null;
             let imageUrl = '';
             if (trackDetail?.ArtistIds?.[0]) {
-                imageUrl = emby.getImageUrl(trackDetail.ArtistIds[0], 'Primary', 200);
-            } else if (stats.trackId) {
-                // Fallback to track image if artist image not found
-                imageUrl = emby.getImageUrl(stats.trackId, 'Primary', 200);
+                imageUrl = emby.getImageUrl(trackDetail.ArtistIds[0], 'Primary', 400);
+            } else {
+                // Try fetching by Artist Name as fallback (common in some Emby clients)
+                imageUrl = `${emby.getApiBaseUrl()}/Artists/${encodeURIComponent(name)}/Images/Primary?maxWidth=400&api_key=${emby.getApiKey()}`;
             }
             return { 
                 name, 
@@ -744,9 +744,10 @@ export async function aggregateMusicStats(userId: string, username: string, time
         const trackDetail = stats.trackId ? musicItemDetails.get(stats.trackId) : null;
         let imageUrl = '';
         if (trackDetail?.ArtistIds?.[0]) {
-            imageUrl = emby.getImageUrl(trackDetail.ArtistIds[0], 'Primary', 200);
-        } else if (stats.trackId) {
-            imageUrl = emby.getImageUrl(stats.trackId, 'Primary', 200);
+            imageUrl = emby.getImageUrl(trackDetail.ArtistIds[0], 'Primary', 400);
+        } else {
+            // Try fetching by Artist Name as fallback
+            imageUrl = `${emby.getApiBaseUrl()}/Artists/${encodeURIComponent(name)}/Images/Primary?maxWidth=400&api_key=${emby.getApiKey()}`;
         }
         return {
             name,
