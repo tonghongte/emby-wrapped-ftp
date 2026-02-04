@@ -116,8 +116,8 @@ export const GET: RequestHandler = async ({ url }) => {
         // Music aggregation
         let musicTotalMinutes = 0;
         let musicTrackCount = 0;
-        const artistMap = new Map<string, { minutes: number; count: number }>();
-        const trackMap = new Map<string, { name: string; artist: string; minutes: number; count: number }>();
+        const artistMap = new Map<string, { minutes: number; count: number; trackId?: string }>();
+        const trackMap = new Map<string, { name: string; artist: string; minutes: number; count: number; trackId: string }>();
 
         for (const { activity } of userActivities) {
             for (const item of activity) {
@@ -135,6 +135,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
                 // Music
                 const itemType = item.item_type?.toLowerCase();
+                const trackId = String(item.item_id);
                 if (itemType === 'audio' || itemType === 'musicalbum') {
                     musicTotalMinutes += minutes;
                     musicTrackCount++;
@@ -145,14 +146,15 @@ export const GET: RequestHandler = async ({ url }) => {
                     const trackName = parts.length > 1 ? parts.slice(1).join(' - ') : item.item_name;
 
                     // Artist stats
-                    const existingArtist = artistMap.get(artist) || { minutes: 0, count: 0 };
+                    const existingArtist = artistMap.get(artist) || { minutes: 0, count: 0, trackId };
                     existingArtist.minutes += minutes;
                     existingArtist.count += 1;
+                    if (!existingArtist.trackId) existingArtist.trackId = trackId;
                     artistMap.set(artist, existingArtist);
 
                     // Track stats
                     const trackKey = `${artist}|||${trackName}`;
-                    const existingTrack = trackMap.get(trackKey) || { name: trackName, artist, minutes: 0, count: 0 };
+                    const existingTrack = trackMap.get(trackKey) || { name: trackName, artist, minutes: 0, count: 0, trackId };
                     existingTrack.minutes += minutes;
                     existingTrack.count += 1;
                     trackMap.set(trackKey, existingTrack);
@@ -224,19 +226,56 @@ export const GET: RequestHandler = async ({ url }) => {
             };
         }));
 
+        // Get top music items and fetch their details
+        const topArtistsRaw = [...artistMap.entries()]
+            .sort((a, b) => b[1].minutes - a[1].minutes)
+            .slice(0, 5);
+        
+        const topTracksRaw = [...trackMap.values()]
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+        const musicItemIds = new Set<string>();
+        topArtistsRaw.forEach(([_, stats]) => { if (stats.trackId) musicItemIds.add(stats.trackId); });
+        topTracksRaw.forEach(stats => musicItemIds.add(stats.trackId));
+
+        const musicItemDetails = new Map<string, EmbyItem>();
+        if (musicItemIds.size > 0 && fetchUserId) {
+            try {
+                const items = await emby.getItems(fetchUserId, [...musicItemIds]);
+                items.forEach(item => musicItemDetails.set(item.Id, item));
+            } catch (e) {
+                console.warn('Failed to fetch music item details for server stats:', e);
+            }
+        }
+
         // Finalize music stats
         const musicStats: MusicStats = {
             totalMinutes: musicTotalMinutes,
             trackCount: musicTrackCount,
-            topArtists: [...artistMap.entries()]
-                .sort((a, b) => b[1].minutes - a[1].minutes)
-                .slice(0, 5)
-                .map(([name, stats]) => ({ name, minutes: Math.round(stats.minutes), count: stats.count })),
+            topArtists: topArtistsRaw.map(([name, stats]) => {
+                const trackDetail = stats.trackId ? musicItemDetails.get(stats.trackId) : null;
+                let imageUrl = '';
+                if (trackDetail?.ArtistIds?.[0]) {
+                    imageUrl = emby.getImageUrl(trackDetail.ArtistIds[0], 'Primary', 400);
+                } else {
+                    imageUrl = `${emby.getApiBaseUrl()}/Artists/${encodeURIComponent(name)}/Images/Primary?maxWidth=400&api_key=${emby.getApiKey()}`;
+                }
+                return { 
+                    name, 
+                    minutes: Math.round(stats.minutes), 
+                    count: stats.count,
+                    imageUrl 
+                };
+            }),
             topAlbums: [],
-            topTracks: [...trackMap.values()]
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 5)
-                .map(t => ({ ...t, minutes: Math.round(t.minutes) }))
+            topTracks: topTracksRaw.map(t => ({
+                name: t.name,
+                artist: t.artist,
+                minutes: Math.round(t.minutes),
+                count: t.count,
+                imageUrl: emby.getImageUrl(t.trackId, 'Primary', 400)
+            }))
         };
 
         const stats: ServerStats = {
