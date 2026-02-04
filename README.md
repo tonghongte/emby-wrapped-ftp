@@ -1,10 +1,21 @@
-# Emby Wrapped
+# Emby Wrapped (Enhanced)
 
-A beautiful, Spotify Wrapped-style year-in-review experience for your Emby media server. See your viewing stats, top shows, favorite genres, and more in an interactive, animated presentation.
+A beautiful, Spotify Wrapped-style year-in-review experience for your Emby media server. This fork includes enhanced music statistics, improved image handling, and more detailed viewing patterns.
 
 ![Emby Wrapped](https://img.shields.io/badge/Emby-Wrapped-1db954?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 ![SvelteKit](https://img.shields.io/badge/SvelteKit-FF3E00?style=for-the-badge&logo=svelte&logoColor=white)
+
+## Fork Improvements
+
+This version (`emby-wrapped-ftp`) adds several features and improvements over the original:
+
+- **Enhanced Music Statistics** - Detailed breakdown of top artists and tracks with full image support.
+- **Image Proxy & Caching** - Built-in image proxy to solve CORS issues and provide persistent caching for faster loading.
+- **Flexible Time Ranges** - Support for both yearly and monthly "Wrapped" views.
+- **Library Filtering** - Use `FILTER_USER_ID` to restrict displayed content (e.g., to hide NSFW libraries).
+- **High-Quality Visuals** - Automatically fetches higher resolution posters and artist images.
+- **Improved Error Handling** - Robust handling of missing images and server connection issues.
 
 ## Screenshots
 
@@ -171,6 +182,8 @@ npm run preview
 | `TMDB_API_KEY` | TMDB API key for enhanced poster images (get one free at themoviedb.org) | No |
 | `PUBLIC_URL` | Public URL for share links (defaults to request origin) | No |
 | `ANALYTICS_SCRIPT` | Analytics script tag (e.g., Umami, Plausible) to inject into page head | No |
+| `FILTER_USER_ID` | Emby User ID to use for library filtering (useful for hiding NSFW content) | No |
+| `CACHE_TTL` | Cache duration in seconds for statistics (default: 86400) | No |
 
 ## Background Music
 
@@ -185,9 +198,25 @@ For Docker deployments, mount a volume to `/app/static/music/` (see docker-compo
 ## Usage
 
 1. Navigate to the app in your browser
-2. Select your user from the list
-3. Enjoy your personalized Emby Wrapped experience!
-4. Use the Share button on any card to download it as an image
+2. Select the time period (Year or Month) you want to view
+3. Select your user from the list
+4. Enjoy your personalized Emby Wrapped experience!
+5. Use the Share button on any card to download it as an image
+
+## New in this Fork
+
+Detailed changes can be found in the [CHANGELOG.md](CHANGELOG.md).
+
+### Enhanced Music Experience
+The music summary card now features:
+- **Artist & Track Thumbnails**: Visual representation of your top music content.
+- **Proxy Handling**: All images are proxied through the server to avoid CORS issues and ensure they load correctly even if your Emby server is behind a restrictive firewall.
+- **Dynamic Placeholders**: Beautiful gradient placeholders if an image is missing.
+
+### Robust Backend
+- **Server-side Caching**: Images are cached locally to reduce load on your Emby server and improve presentation speed.
+- **Improved API Client**: Better handling of Emby's complex image API, including artist ID resolution.
+- **NSFW Filtering**: Ability to filter the entire wrapped experience through a specific user's permissions via `FILTER_USER_ID`.
 
 ## Tech Stack
 
